@@ -12,9 +12,17 @@ wheels/
 # Docker variables
 docker-setup/
 
-# Temporary folders
-parsed/
-processing/
-completed_clips/
-tests/
-test_data/
+# Temporary folders — keep structure, ignore content
+parsed/*
+!parsed/.gitkeep
+processing/*
+!processing/.gitkeep
+completed_clips/*
+!completed_clips/.gitkeep
+tests/*
+!tests/.gitkeep
+test_data/*
+!test_data/.gitkeep
+
+# Test cache
+.pytest_cache/
