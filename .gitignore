@@ -1,0 +1,20 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Docker variables
+docker-setup/
+
+# Temporary folders
+parsed/
+processing/
+completed_clips/
+tests/
+test_data/
