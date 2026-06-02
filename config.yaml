@@ -8,7 +8,7 @@ parser:
 
 analyzer:
   # Your Steam ID64 — leave blank to analyze all players
-  target_player_steam_id: "76561198224790344"
+  target_player_steam_id: ""  # set via DEADLOCK_STEAM_ID in .env
   # Seconds within which multiple kills count as a multi-kill
   multikill_window_seconds: 10
   # Ticks to record before the event trigger (lead-in context)
@@ -28,7 +28,7 @@ analyzer:
 recording:
   obs_host: "localhost"
   obs_port: 4455
-  obs_password: ""
+  obs_password: ""  # set via OBS_PASSWORD in .env
   # OBS scene to switch to before recording (leave blank to use current scene)
   scene_name: ""
   # Path to steam.exe (used to launch Deadlock with +playdemo)

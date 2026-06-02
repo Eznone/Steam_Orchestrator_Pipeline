@@ -110,13 +110,12 @@ class OBSController:
 
 if __name__ == "__main__":
     import sys
-    import yaml
     import logging
+    from config import load_config
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
-    with open("config.yaml") as f:
-        config = yaml.safe_load(f)
+    config = load_config()
 
     print("Testing OBS connection...")
     try:

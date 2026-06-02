@@ -3,15 +3,11 @@ import logging
 import sys
 from pathlib import Path
 
-import yaml
 from boon import Demo, DemoHeaderError, InvalidDemoError, hero_names
 
+from config import load_config
+
 logger = logging.getLogger(__name__)
-
-
-def load_config(config_path: str = "config.yaml") -> dict:
-    with open(config_path) as f:
-        return yaml.safe_load(f)
 
 
 def parse_demo(dem_path: str | Path, output_path: str | Path | None = None) -> dict:

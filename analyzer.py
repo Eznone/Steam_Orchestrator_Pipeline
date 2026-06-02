@@ -3,8 +3,6 @@ import logging
 import sys
 from pathlib import Path
 
-import yaml
-
 logger = logging.getLogger(__name__)
 
 _KILL_LABELS = {
@@ -26,9 +24,7 @@ _OBJECTIVE_LABELS = {
 }
 
 
-def load_config(config_path: str = "config.yaml") -> dict:
-    with open(config_path) as f:
-        return yaml.safe_load(f)
+from config import load_config
 
 
 def find_player_hero_id(players: list[dict], steam_id: str | int) -> int | None:

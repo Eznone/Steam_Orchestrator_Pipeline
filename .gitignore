@@ -1,3 +1,6 @@
+# Secrets
+.env
+
 # Python-generated files
 __pycache__/
 *.py[oc]
@@ -26,3 +29,6 @@ test_data/*
 
 # Test cache
 .pytest_cache/
+
+# Replay files
+*.dem

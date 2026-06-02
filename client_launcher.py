@@ -17,6 +17,10 @@ DEADLOCK_APP_ID = "1422450"
 # Default Steam executable path; overridable via config.yaml
 _DEFAULT_STEAM_EXE = r"C:\Program Files (x86)\Steam\steam.exe"
 
+# pyautogui is always bound as a module-level name so tests can patch it.
+# On WSL2 / headless Linux the import fails and it stays None; _GUI_AVAILABLE
+# gates every call so None is never actually invoked at runtime.
+pyautogui = None
 try:
     import pyautogui
     pyautogui.FAILSAFE = True  # move mouse to top-left corner to abort
@@ -129,15 +133,14 @@ def prepare_replay(start_tick: int, seek_settle_seconds: float = 2.0) -> None:
 # ── Standalone test ──────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    import yaml
+    from config import load_config
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
     if len(sys.argv) < 2:
         print("Usage: python client_launcher.py <path/to/match.dem>")
         sys.exit(1)
 
-    with open("config.yaml") as f:
-        config = yaml.safe_load(f)
+    config = load_config()
 
     dem = Path(sys.argv[1])
     steam_exe = config.get("recording", {}).get("steam_exe", _DEFAULT_STEAM_EXE)
