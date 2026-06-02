@@ -4,7 +4,6 @@ from pathlib import Path
 
 from boon import Demo, DemoHeaderError, InvalidDemoError, hero_names
 
-from deadlock_clipper.config import load_config
 from deadlock_clipper.core.models import Kill, ObjectiveEvent, Player
 
 logger = logging.getLogger(__name__)

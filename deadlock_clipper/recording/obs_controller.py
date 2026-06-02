@@ -78,11 +78,17 @@ class OBSController:
 
     # ── Recording controls ───────────────────────────────────────────────────
 
+    def _require_connected(self) -> None:
+        if self._client is None:
+            raise RuntimeError("OBS is not connected. Call connect() first.")
+
     def is_recording(self) -> bool:
+        self._require_connected()
         resp = self._client.get_record_status()
         return bool(resp.output_active)
 
     def start_recording(self) -> None:
+        self._require_connected()
         if self.is_recording():
             logger.warning("OBS is already recording — skipping start.")
             return
@@ -91,6 +97,7 @@ class OBSController:
 
     def stop_recording(self) -> str | None:
         """Stop recording and return the output file path, or None if not recording."""
+        self._require_connected()
         if not self.is_recording():
             logger.warning("OBS is not recording — nothing to stop.")
             return None
@@ -100,6 +107,7 @@ class OBSController:
         return path
 
     def set_scene(self, scene_name: str) -> None:
+        self._require_connected()
         if not scene_name:
             return
         self._client.set_current_program_scene(scene_name)

@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 
 from deadlock_clipper.config import load_config
 
@@ -13,7 +14,7 @@ del _gc
 
 
 def _detect_for_all_players(
-    fn,
+    fn: Callable[..., list[dict]],
     kills: list[dict],
     players: list[dict],
     *args,

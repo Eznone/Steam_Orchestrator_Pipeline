@@ -7,15 +7,19 @@ class ParseCache:
 
     def __init__(self) -> None:
         self._data: dict[str, dict] = {}
+        self._lock = threading.Lock()
 
     def get(self, key: str) -> dict | None:
-        return self._data.get(key)
+        with self._lock:
+            return self._data.get(key)
 
     def set(self, key: str, value: dict) -> None:
-        self._data[key] = value
+        with self._lock:
+            self._data[key] = value
 
     def __contains__(self, key: str) -> bool:
-        return key in self._data
+        with self._lock:
+            return key in self._data
 
 
 class JobStore:
@@ -49,5 +53,5 @@ parse_cache = ParseCache()
 jobs = JobStore()
 
 # OBS controller — None when not connected (lock shared with background threads)
-obs_controller = None  # OBSController | None
+obs_controller: "OBSController | None" = None
 obs_lock = threading.Lock()
