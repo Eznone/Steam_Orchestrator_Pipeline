@@ -130,25 +130,3 @@ def prepare_replay(start_tick: int, seek_settle_seconds: float = 2.0) -> None:
     goto_tick(start_tick, seek_settle_seconds)
 
 
-# ── Standalone test ──────────────────────────────────────────────────────────
-
-if __name__ == "__main__":
-    from deadlock_clipper.config import load_config
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-
-    if len(sys.argv) < 2:
-        print("Usage: python -m deadlock_clipper.recording.client_launcher <path/to/match.dem>")
-        sys.exit(1)
-
-    config = load_config()
-
-    dem = Path(sys.argv[1])
-    steam_exe = config.get("recording", {}).get("steam_exe", _DEFAULT_STEAM_EXE)
-    launch_wait = float(config.get("recording", {}).get("launch_wait_seconds", 30.0))
-
-    launch_demo(dem, steam_exe)
-    wait_for_launch(launch_wait)
-
-    print("Game should be loaded. Sending test console command...")
-    hide_hud()
-    print("Done.")

@@ -9,6 +9,7 @@ _KILL_LABELS: dict[int, str]      = {int(k): v for k, v in _gc.get("kill_labels"
 _TEAM_NAMES: dict[int, str]       = {int(k): v for k, v in _gc.get("team_names", {}).items()}
 _LANE_NAMES: dict[int, str]       = {int(k): v for k, v in _gc.get("lane_names", {}).items()}
 _OBJECTIVE_LABELS: dict[str, str] = _gc.get("objective_labels", {})
+del _gc
 
 
 def _detect_for_all_players(

@@ -63,7 +63,8 @@ def analyze_route():
     body = request.get_json(silent=True) or {}
     dem_path = body.get("dem_path", "").strip()
 
-    if dem_path not in state.parse_cache:
+    parsed = state.parse_cache.get(dem_path)
+    if parsed is None:
         return jsonify({"status": "error", "message": "Load the match first."}), 400
 
     config_override = {
@@ -79,5 +80,5 @@ def analyze_route():
         }
     }
 
-    clips = analyze(state.parse_cache.get(dem_path), config_override)
+    clips = analyze(parsed, config_override)
     return jsonify({"status": "ok", "clips": clips})

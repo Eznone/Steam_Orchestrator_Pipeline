@@ -106,30 +106,3 @@ class OBSController:
         logger.info("OBS scene set to '%s'.", scene_name)
 
 
-# ── Standalone connection test ───────────────────────────────────────────────
-
-if __name__ == "__main__":
-    import sys
-    import logging
-    from deadlock_clipper.config import load_config
-
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-
-    config = load_config()
-
-    print("Testing OBS connection...")
-    try:
-        with OBSController.from_config(config) as ctl:
-            recording = ctl.is_recording()
-            print(f"Connected. Currently recording: {recording}")
-
-            if "--record" in sys.argv:
-                print("Starting 3-second test recording...")
-                import time
-                ctl.start_recording()
-                time.sleep(3)
-                path = ctl.stop_recording()
-                print(f"Saved to: {path}")
-    except OBSConnectionError as e:
-        print(f"Connection failed: {e}", file=sys.stderr)
-        sys.exit(1)
