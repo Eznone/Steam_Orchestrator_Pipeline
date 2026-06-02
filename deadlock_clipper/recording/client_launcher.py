@@ -77,6 +77,19 @@ def wait_for_launch(wait_seconds: float = 30.0) -> None:
     time.sleep(wait_seconds)
 
 
+def dismiss_enter_screen(settle_seconds: float = 5.0) -> None:
+    """Press Enter to get past the Deadlock splash screen, then wait for the replay to load.
+
+    Args:
+        settle_seconds: How long to wait after pressing Enter for the replay to finish loading.
+    """
+    _require_gui()
+    logger.info("Dismissing enter screen...")
+    pyautogui.press("enter")
+    logger.info("Waiting %.0fs for replay to load...", settle_seconds)
+    time.sleep(settle_seconds)
+
+
 # ── Console automation ───────────────────────────────────────────────────────
 
 

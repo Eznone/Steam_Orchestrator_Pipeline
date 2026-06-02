@@ -21,9 +21,10 @@ def _recording_defaults() -> dict:
         "host":                rec.get("obs_host", "localhost"),
         "port":                int(rec.get("obs_port", 4455)),
         "password":            rec.get("obs_password", ""),
-        "steam_exe":           rec.get("steam_exe", ""),
-        "launch_wait_seconds": float(rec.get("launch_wait_seconds", 30)),
-        "seek_settle_seconds": float(rec.get("seek_settle_seconds", 2)),
+        "steam_exe":                 rec.get("steam_exe", ""),
+        "launch_wait_seconds":       float(rec.get("launch_wait_seconds", 30)),
+        "enter_screen_settle_seconds": float(rec.get("enter_screen_settle_seconds", 5)),
+        "seek_settle_seconds":       float(rec.get("seek_settle_seconds", 2)),
     }
 
 
@@ -113,6 +114,7 @@ def record_prepare():
     start_tick = int(body.get("start_tick", 0))
     defaults = _recording_defaults()
     launch_wait = float(body.get("launch_wait", defaults["launch_wait_seconds"]))
+    enter_screen_settle = float(body.get("enter_screen_settle", defaults["enter_screen_settle_seconds"]))
     seek_settle = float(body.get("seek_settle", defaults["seek_settle_seconds"]))
     steam_exe = body.get("steam_exe", defaults["steam_exe"])
 
@@ -126,6 +128,7 @@ def record_prepare():
             launch_and_prepare(
                 dem_path, start_tick, steam_exe, launch_wait, seek_settle,
                 on_status=lambda s, m: state.jobs.update(job, s, m),
+                enter_screen_settle=enter_screen_settle,
             )
             state.jobs.update(job, "done", "Ready at tick")
         except Exception as exc:
@@ -142,6 +145,7 @@ def record_clip():
     clip = body.get("clip", {})
     defaults = _recording_defaults()
     launch_wait = float(body.get("launch_wait", defaults["launch_wait_seconds"]))
+    enter_screen_settle = float(body.get("enter_screen_settle", defaults["enter_screen_settle_seconds"]))
     seek_settle = float(body.get("seek_settle", defaults["seek_settle_seconds"]))
     steam_exe = body.get("steam_exe", defaults["steam_exe"])
 
@@ -161,6 +165,7 @@ def record_clip():
             launch_and_prepare(
                 dem_path, start_tick, steam_exe, launch_wait, seek_settle,
                 on_status=lambda s, m: state.jobs.update(job, s, m),
+                enter_screen_settle=enter_screen_settle,
             )
             with state.obs_lock:
                 if state.obs_controller is None:
