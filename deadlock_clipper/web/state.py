@@ -1,29 +1,53 @@
 import threading
 import uuid
 
-# Parse cache: dem_path -> parsed match data dict
-parse_cache: dict[str, dict] = {}
 
-# Persistent OBS controller — None when not connected
+class ParseCache:
+    """Thread-safe cache mapping dem_path -> parsed match data dict."""
+
+    def __init__(self) -> None:
+        self._data: dict[str, dict] = {}
+
+    def get(self, key: str) -> dict | None:
+        return self._data.get(key)
+
+    def set(self, key: str, value: dict) -> None:
+        self._data[key] = value
+
+    def __contains__(self, key: str) -> bool:
+        return key in self._data
+
+
+class JobStore:
+    """Thread-safe store for background recording job state."""
+
+    def __init__(self) -> None:
+        self._jobs: dict[str, dict] = {}
+        self._lock = threading.Lock()
+
+    def create(self, clip_id: str | None = None) -> tuple[str, dict]:
+        job_id = str(uuid.uuid4())
+        job = {"status": "preparing", "message": "Starting...", "output_path": None, "clip_id": clip_id}
+        with self._lock:
+            self._jobs[job_id] = job
+        return job_id, job
+
+    def get(self, job_id: str) -> dict | None:
+        with self._lock:
+            return self._jobs.get(job_id)
+
+    def update(self, job: dict, status: str, message: str = "", output_path: str | None = None) -> None:
+        with self._lock:
+            job["status"] = status
+            job["message"] = message
+            if output_path is not None:
+                job["output_path"] = output_path
+
+
+# Module-level singletons
+parse_cache = ParseCache()
+jobs = JobStore()
+
+# OBS controller — None when not connected (lock shared with background threads)
 obs_controller = None  # OBSController | None
 obs_lock = threading.Lock()
-
-# Background jobs: job_id -> {status, message, output_path, clip_id}
-jobs: dict[str, dict] = {}
-jobs_lock = threading.Lock()
-
-
-def make_job(clip_id: str | None = None) -> tuple[str, dict]:
-    job_id = str(uuid.uuid4())
-    job = {"status": "preparing", "message": "Starting...", "output_path": None, "clip_id": clip_id}
-    with jobs_lock:
-        jobs[job_id] = job
-    return job_id, job
-
-
-def set_job(job: dict, status: str, message: str = "", output_path: str | None = None) -> None:
-    with jobs_lock:
-        job["status"] = status
-        job["message"] = message
-        if output_path is not None:
-            job["output_path"] = output_path

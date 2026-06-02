@@ -1,7 +1,4 @@
-import json
 import logging
-import sys
-from pathlib import Path
 
 from deadlock_clipper.config import load_config
 
@@ -271,28 +268,3 @@ def analyze(parsed_data: dict, config: dict) -> list[dict]:
     return result
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-
-    if len(sys.argv) < 2:
-        print("Usage: python -m deadlock_clipper.core.analyzer <path/to/parsed.json>")
-        sys.exit(1)
-
-    config = load_config()
-
-    with open(sys.argv[1]) as f:
-        parsed_data = json.load(f)
-
-    clips = analyze(parsed_data, config)
-
-    tick_rate = parsed_data.get("tick_rate", 64)
-    print(f"\nFound {len(clips)} clip zone(s) in match {parsed_data['match_id']}:")
-    for clip in clips:
-        start_s = clip["start_tick"] / tick_rate
-        end_s = clip["end_tick"] / tick_rate
-        print(
-            f"  [{clip['clip_id']}] {clip['reason']:<22} "
-            f"ticks {clip['start_tick']}–{clip['end_tick']}  "
-            f"({start_s:.1f}s – {end_s:.1f}s)"
-            + (f"  {clip['detail']}" if clip.get("detail") else "")
-        )

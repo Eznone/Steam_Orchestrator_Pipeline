@@ -43,12 +43,13 @@ def parse_route():
     if not dem_path:
         return jsonify({"status": "error", "message": "dem_path is required"}), 400
 
-    if dem_path in state.parse_cache:
-        return jsonify({"status": "ok", "cached": True, "data": state.parse_cache[dem_path]})
+    cached = state.parse_cache.get(dem_path)
+    if cached is not None:
+        return jsonify({"status": "ok", "cached": True, "data": cached})
 
     try:
         result = parse_demo(dem_path)
-        state.parse_cache[dem_path] = result
+        state.parse_cache.set(dem_path, result)
         return jsonify({"status": "ok", "cached": False, "data": result})
     except FileNotFoundError as exc:
         return jsonify({"status": "error", "message": str(exc)}), 404
@@ -78,5 +79,5 @@ def analyze_route():
         }
     }
 
-    clips = analyze(state.parse_cache[dem_path], config_override)
+    clips = analyze(state.parse_cache.get(dem_path), config_override)
     return jsonify({"status": "ok", "clips": clips})

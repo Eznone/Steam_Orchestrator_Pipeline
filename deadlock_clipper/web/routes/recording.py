@@ -119,17 +119,17 @@ def record_prepare():
     if not dem_path:
         return jsonify({"status": "error", "message": "dem_path is required"}), 400
 
-    job_id, job = state.make_job()
+    job_id, job = state.jobs.create()
 
     def _run():
         try:
             launch_and_prepare(
                 dem_path, start_tick, steam_exe, launch_wait, seek_settle,
-                on_status=lambda s, m: state.set_job(job, s, m),
+                on_status=lambda s, m: state.jobs.update(job, s, m),
             )
-            state.set_job(job, "done", "Ready at tick")
+            state.jobs.update(job, "done", "Ready at tick")
         except Exception as exc:
-            state.set_job(job, "error", str(exc))
+            state.jobs.update(job, "error", str(exc))
 
     threading.Thread(target=_run, daemon=True).start()
     return jsonify({"status": "started", "job_id": job_id})
@@ -151,30 +151,30 @@ def record_clip():
     clip_id = clip.get("clip_id", "")
     start_tick = int(clip.get("start_tick", 0))
     end_tick = int(clip.get("end_tick", 0))
-    tick_rate = state.parse_cache.get(dem_path, {}).get("tick_rate", 64)
+    tick_rate = (state.parse_cache.get(dem_path) or {}).get("tick_rate", 64)
     duration_s = max((end_tick - start_tick) / tick_rate, 1)
 
-    job_id, job = state.make_job(clip_id)
+    job_id, job = state.jobs.create(clip_id)
 
     def _run():
         try:
             launch_and_prepare(
                 dem_path, start_tick, steam_exe, launch_wait, seek_settle,
-                on_status=lambda s, m: state.set_job(job, s, m),
+                on_status=lambda s, m: state.jobs.update(job, s, m),
             )
             with state.obs_lock:
                 if state.obs_controller is None:
                     raise RuntimeError("OBS not connected")
-                state.set_job(job, "recording", "Recording...")
+                state.jobs.update(job, "recording", "Recording...")
                 state.obs_controller.start_recording()
             time.sleep(duration_s)
             with state.obs_lock:
                 if state.obs_controller is None:
                     raise RuntimeError("OBS disconnected during recording")
                 output_path = state.obs_controller.stop_recording()
-            state.set_job(job, "done", "Saved", output_path)
+            state.jobs.update(job, "done", "Saved", output_path)
         except Exception as exc:
-            state.set_job(job, "error", str(exc))
+            state.jobs.update(job, "error", str(exc))
 
     threading.Thread(target=_run, daemon=True).start()
     return jsonify({"status": "started", "job_id": job_id, "clip_id": clip_id})
@@ -182,8 +182,7 @@ def record_clip():
 
 @bp.route("/api/record/job/<job_id>")
 def record_job(job_id: str):
-    with state.jobs_lock:
-        job = state.jobs.get(job_id)
+    job = state.jobs.get(job_id)
     if job is None:
         return jsonify({"status": "error", "message": "Job not found"}), 404
     return jsonify(job)

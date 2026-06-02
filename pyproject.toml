@@ -20,5 +20,8 @@ dev = [
     "pytest>=9.0.3",
 ]
 
+[project.scripts]
+deadlock-clipper = "deadlock_clipper.cli:main"
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
