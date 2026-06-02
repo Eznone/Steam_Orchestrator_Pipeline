@@ -20,6 +20,7 @@ def launch_and_prepare(
     enter_screen_settle: float = 5.0,
     replays_dir: str | None = None,
     demo_load_wait: float = 8.0,
+    player_name: str = "",
 ) -> None:
     """Launch Deadlock with the given replay and seek to start_tick.
 
@@ -34,4 +35,4 @@ def launch_and_prepare(
     on_status("preparing", "Loading demo via console...")
     load_demo_via_console(Path(dem_path).name, demo_load_wait)
     on_status("preparing", "Seeking to tick...")
-    prepare_replay(start_tick, seek_settle)
+    prepare_replay(start_tick, seek_settle, player_name=player_name)

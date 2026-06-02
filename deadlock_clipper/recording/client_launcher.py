@@ -148,6 +148,12 @@ def load_demo_via_console(filename: str, load_wait: float = 8.0) -> None:
     time.sleep(load_wait)
 
 
+def spec_player(player_name: str) -> None:
+    """Switch the spectator camera to the named player via console."""
+    send_console_command(f'spec_player "{player_name}"')
+    logger.info("Spectating player: %s", player_name)
+
+
 def hide_hud() -> None:
     """Send the console command to hide the replay timeline and HUD controls."""
     send_console_command("citadel_hide_replay_hud true")
@@ -169,10 +175,12 @@ def goto_tick(
     time.sleep(seek_settle_seconds)
 
 
-def prepare_replay(start_tick: int, seek_settle_seconds: float = 2.0) -> None:
-    """Hide the HUD and seek to the clip's start tick.
+def prepare_replay(start_tick: int, seek_settle_seconds: float = 2.0, player_name: str = "") -> None:
+    """Spectate the player (if given), hide the HUD, and seek to the clip's start tick.
 
-    Call this after wait_for_launch() and before starting OBS recording.
+    Call this after load_demo_via_console() and before starting OBS recording.
     """
+    if player_name:
+        spec_player(player_name)
     hide_hud()
     goto_tick(start_tick, seek_settle_seconds)

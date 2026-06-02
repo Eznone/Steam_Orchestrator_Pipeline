@@ -19,11 +19,14 @@ def _detect_for_all_players(
     players: list[dict],
     *args,
 ) -> list[dict]:
-    """Run a clip-zone detector for every player and return merged, sorted results."""
+    """Run a clip-zone detector for every player and return results grouped by player."""
     result = []
     for p in players:
-        result.extend(fn(kills, p["hero_id"], *args))
-    result.sort(key=lambda z: z["start_tick"])
+        zones = fn(kills, p["hero_id"], *args)
+        for z in zones:
+            z["player_name"] = p["player_name"]
+        result.extend(zones)
+    result.sort(key=lambda z: (z["player_name"], z["start_tick"]))
     return result
 
 
@@ -232,15 +235,21 @@ def analyze(parsed_data: dict, config: dict) -> list[dict]:
     if event_type == "objective":
         objective_types: list[str] = cfg.get("objective_types", ["walker", "patron"])
         zones = find_objective_destructions(objectives_destroyed, objective_types, lead_ticks, buffer_ticks)
+        for z in zones:
+            z["player_name"] = ""
 
     else:
         # Resolve target hero
         hero_id: int | None = None
+        target_player_name: str = ""
         if steam_id:
             hero_id = find_player_hero_id(players, steam_id)
             if hero_id is None:
                 logger.warning("Steam ID %s not found in this match — no clips generated.", steam_id)
                 return []
+            target_player_name = next(
+                (p["player_name"] for p in players if str(p["steam_id"]) == str(steam_id)), ""
+            )
             logger.info("Analyzing %s for hero_id=%d (steam_id=%s)", event_type, hero_id, steam_id)
 
         if event_type == "single_kill":
@@ -264,6 +273,10 @@ def analyze(parsed_data: dict, config: dict) -> list[dict]:
                 zones = find_multikills(kills, hero_id, window_ticks, threshold, lead_ticks, buffer_ticks)
             else:
                 zones = _detect_for_all_players(find_multikills, kills, players, window_ticks, threshold, lead_ticks, buffer_ticks)
+
+        if hero_id is not None:
+            for z in zones:
+                z["player_name"] = target_player_name
 
     result = [{"clip_id": f"{i:02d}", **zone} for i, zone in enumerate(zones, start=1)]
     logger.info("Found %d clip zone(s) [event_type=%s] in match %s.", len(result), event_type, parsed_data.get("match_id"))

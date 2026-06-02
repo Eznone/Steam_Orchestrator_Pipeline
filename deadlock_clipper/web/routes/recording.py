@@ -126,6 +126,8 @@ def record_prepare():
 
     job_id, job = state.jobs.create()
 
+    player_name = body.get("player_name", "")
+
     def _run():
         try:
             launch_and_prepare(
@@ -133,6 +135,7 @@ def record_prepare():
                 on_status=lambda s, m: state.jobs.update(job, s, m),
                 enter_screen_settle=enter_screen_settle,
                 replays_dir=replays_dir or None,
+                player_name=player_name,
             )
             state.jobs.update(job, "done", "Ready at tick")
         except Exception as exc:
@@ -160,6 +163,7 @@ def record_clip():
     clip_id = clip.get("clip_id", "")
     start_tick = int(clip.get("start_tick", 0))
     end_tick = int(clip.get("end_tick", 0))
+    player_name = clip.get("player_name", "")
     tick_rate = (state.parse_cache.get(dem_path) or {}).get("tick_rate", 64)
     duration_s = max((end_tick - start_tick) / tick_rate, 1)
 
@@ -172,6 +176,7 @@ def record_clip():
                 on_status=lambda s, m: state.jobs.update(job, s, m),
                 enter_screen_settle=enter_screen_settle,
                 replays_dir=replays_dir or None,
+                player_name=player_name,
             )
             with state.obs_lock:
                 if state.obs_controller is None:
