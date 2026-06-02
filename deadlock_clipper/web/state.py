@@ -60,3 +60,7 @@ obs_lock = threading.Lock()
 # None means the game is not running or the demo is unknown.
 # Set after a successful launch_and_prepare; cleared on error or disconnect.
 active_dem: str | None = None
+
+# Ensures only one recording job (prepare or clip) runs at a time so that
+# game commands from a second job cannot fire while the first is recording.
+recording_lock = threading.Lock()

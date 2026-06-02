@@ -147,12 +147,13 @@ analyzeBtn.addEventListener('click', async () => {
   analyzeBtn.disabled = true;
 
   const eventType = eventTypeSelect.value;
+  const tickRate = parsedData?.tick_rate || 64;
   const body = {
-    dem_path:    currentDem,
-    steam_id:    document.getElementById('player-select').value,
-    event_type:  eventType,
-    lead_ticks:  Number(document.getElementById('lead').value),
-    buffer_ticks: Number(document.getElementById('buffer').value),
+    dem_path:     currentDem,
+    steam_id:     document.getElementById('player-select').value,
+    event_type:   eventType,
+    lead_ticks:   Math.round(Number(document.getElementById('lead').value) * tickRate),
+    buffer_ticks: Math.round(Number(document.getElementById('buffer').value) * tickRate),
   };
   if (eventType === 'multikill') {
     body.window_seconds = Number(document.getElementById('window').value);
@@ -501,6 +502,7 @@ async function prepareClip(clipId) {
       body: JSON.stringify({
         dem_path:    currentDem,
         start_tick:  clip.start_tick,
+        end_tick:    clip.end_tick,
         player_name: clip.player_name || '',
         steam_exe:   document.getElementById('steam-exe').value,
         launch_wait: Number(document.getElementById('launch-wait').value),

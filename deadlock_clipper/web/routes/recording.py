@@ -115,6 +115,7 @@ def record_prepare():
     body = request.get_json(silent=True) or {}
     dem_path = body.get("dem_path", "").strip()
     start_tick = int(body.get("start_tick", 0))
+    end_tick = int(body.get("end_tick", 0))
     defaults = _recording_defaults()
     launch_wait = float(body.get("launch_wait", defaults["launch_wait_seconds"]))
     enter_screen_settle = float(body.get("enter_screen_settle", defaults["enter_screen_settle_seconds"]))
@@ -125,32 +126,39 @@ def record_prepare():
     if not dem_path:
         return jsonify({"status": "error", "message": "dem_path is required"}), 400
 
+    tick_rate = (state.parse_cache.get(dem_path) or {}).get("tick_rate", 64)
+    duration_s = max((end_tick - start_tick) / tick_rate, 0) if end_tick > start_tick else 0
+
     job_id, job = state.jobs.create()
 
     player_name = body.get("player_name", "")
 
     def _run():
-        try:
-            if state.active_dem == dem_path:
-                prepare_only(
-                    dem_path, start_tick, seek_settle,
-                    on_status=lambda s, m: state.jobs.update(job, s, m),
-                    player_name=player_name,
-                )
-            else:
+        with state.recording_lock:
+            try:
+                if state.active_dem == dem_path:
+                    prepare_only(
+                        dem_path, start_tick, seek_settle,
+                        on_status=lambda s, m: state.jobs.update(job, s, m),
+                        player_name=player_name,
+                    )
+                else:
+                    state.active_dem = None
+                    launch_and_prepare(
+                        dem_path, start_tick, steam_exe, launch_wait, seek_settle,
+                        on_status=lambda s, m: state.jobs.update(job, s, m),
+                        enter_screen_settle=enter_screen_settle,
+                        replays_dir=replays_dir or None,
+                        player_name=player_name,
+                    )
+                    state.active_dem = dem_path
+                if duration_s > 0:
+                    state.jobs.update(job, "preparing", "Playing clip...")
+                    time.sleep(duration_s)
+                state.jobs.update(job, "done", "Ready at tick")
+            except Exception as exc:
                 state.active_dem = None
-                launch_and_prepare(
-                    dem_path, start_tick, steam_exe, launch_wait, seek_settle,
-                    on_status=lambda s, m: state.jobs.update(job, s, m),
-                    enter_screen_settle=enter_screen_settle,
-                    replays_dir=replays_dir or None,
-                    player_name=player_name,
-                )
-                state.active_dem = dem_path
-            state.jobs.update(job, "done", "Ready at tick")
-        except Exception as exc:
-            state.active_dem = None
-            state.jobs.update(job, "error", str(exc))
+                state.jobs.update(job, "error", str(exc))
 
     threading.Thread(target=_run, daemon=True).start()
     return jsonify({"status": "started", "job_id": job_id})
@@ -181,37 +189,38 @@ def record_clip():
     job_id, job = state.jobs.create(clip_id)
 
     def _run():
-        try:
-            if state.active_dem == dem_path:
-                prepare_only(
-                    dem_path, start_tick, seek_settle,
-                    on_status=lambda s, m: state.jobs.update(job, s, m),
-                    player_name=player_name,
-                )
-            else:
+        with state.recording_lock:
+            try:
+                if state.active_dem == dem_path:
+                    prepare_only(
+                        dem_path, start_tick, seek_settle,
+                        on_status=lambda s, m: state.jobs.update(job, s, m),
+                        player_name=player_name,
+                    )
+                else:
+                    state.active_dem = None
+                    launch_and_prepare(
+                        dem_path, start_tick, steam_exe, launch_wait, seek_settle,
+                        on_status=lambda s, m: state.jobs.update(job, s, m),
+                        enter_screen_settle=enter_screen_settle,
+                        replays_dir=replays_dir or None,
+                        player_name=player_name,
+                    )
+                    state.active_dem = dem_path
+                with state.obs_lock:
+                    if state.obs_controller is None:
+                        raise RuntimeError("OBS not connected")
+                    state.jobs.update(job, "recording", "Recording...")
+                    state.obs_controller.start_recording()
+                time.sleep(duration_s)
+                with state.obs_lock:
+                    if state.obs_controller is None:
+                        raise RuntimeError("OBS disconnected during recording")
+                    output_path = state.obs_controller.stop_recording()
+                state.jobs.update(job, "done", "Saved", output_path)
+            except Exception as exc:
                 state.active_dem = None
-                launch_and_prepare(
-                    dem_path, start_tick, steam_exe, launch_wait, seek_settle,
-                    on_status=lambda s, m: state.jobs.update(job, s, m),
-                    enter_screen_settle=enter_screen_settle,
-                    replays_dir=replays_dir or None,
-                    player_name=player_name,
-                )
-                state.active_dem = dem_path
-            with state.obs_lock:
-                if state.obs_controller is None:
-                    raise RuntimeError("OBS not connected")
-                state.jobs.update(job, "recording", "Recording...")
-                state.obs_controller.start_recording()
-            time.sleep(duration_s)
-            with state.obs_lock:
-                if state.obs_controller is None:
-                    raise RuntimeError("OBS disconnected during recording")
-                output_path = state.obs_controller.stop_recording()
-            state.jobs.update(job, "done", "Saved", output_path)
-        except Exception as exc:
-            state.active_dem = None
-            state.jobs.update(job, "error", str(exc))
+                state.jobs.update(job, "error", str(exc))
 
     threading.Thread(target=_run, daemon=True).start()
     return jsonify({"status": "started", "job_id": job_id, "clip_id": clip_id})
