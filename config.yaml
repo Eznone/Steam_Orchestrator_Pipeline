@@ -17,6 +17,13 @@ analyzer:
   clip_buffer_ticks: 300
   # Minimum kill count to flag as a clip-worthy event
   multikill_threshold: 2
+  # Minimum consecutive kills (without dying) for a kill streak clip
+  kill_streak_threshold: 3
+  # Objective types to detect for the "objective" event type
+  objective_types:
+    - walker
+    - barracks
+    - patron
 
 recording:
   obs_host: "localhost"
@@ -24,6 +31,12 @@ recording:
   obs_password: ""
   # OBS scene to switch to before recording (leave blank to use current scene)
   scene_name: ""
+  # Path to steam.exe (used to launch Deadlock with +playdemo)
+  steam_exe: 'C:\Program Files (x86)\Steam\steam.exe'
+  # Seconds to wait after launching before sending console commands
+  launch_wait_seconds: 30
+  # Seconds to wait after demo_goto before OBS starts recording
+  seek_settle_seconds: 2
 
 clips:
   output_dir: "./completed_clips"

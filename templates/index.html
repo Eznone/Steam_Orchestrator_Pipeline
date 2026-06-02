@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deadlock Auto-Clipper</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --surface2:  #21262d;
+      --border:    #30363d;
+      --accent:    #e8703a;
+      --accent-dim:#a04e27;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --green:     #3fb950;
+      --red:       #f85149;
+      --tag-dk:    #1c2a3a;
+      --tag-text:  #79c0ff;
+      --radius:    8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    header h1 { font-size: 18px; font-weight: 600; letter-spacing: .3px; }
+    header .badge {
+      font-size: 11px;
+      background: var(--tag-dk);
+      color: var(--tag-text);
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 0;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    aside {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      overflow-y: auto;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    /* ── Form controls ── */
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+
+    select, input[type="text"], input[type="number"] {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 10px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    select:focus, input:focus { border-color: var(--accent); }
+    select option { background: var(--surface2); }
+
+    .field { margin-bottom: 12px; }
+
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity .15s, transform .1s;
+      width: 100%;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary   { background: var(--accent);    color: #fff; }
+    .btn-secondary { background: var(--surface2);  color: var(--text); border: 1px solid var(--border); }
+    .btn-green     { background: var(--green);     color: #000; }
+
+    /* ── Main panel ── */
+    main {
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    /* ── Match info bar ── */
+    #match-info {
+      display: none;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    #match-info.visible { display: flex; }
+    .info-item { display: flex; flex-direction: column; gap: 2px; }
+    .info-item .val { font-size: 16px; font-weight: 600; }
+    .info-item .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .team-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .team-2 { background: #1a2a3a; color: #79c0ff; }
+    .team-3 { background: #2a1a1a; color: #f0883e; }
+
+    /* ── Content area ── */
+    .content {
+      padding: 24px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ── Empty / status states ── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--muted);
+      padding: 60px 20px;
+      text-align: center;
+    }
+    .empty-state .icon { font-size: 40px; opacity: .4; }
+    .empty-state p { font-size: 13px; max-width: 260px; line-height: 1.5; }
+
+    /* ── Clip cards ── */
+    .clips-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .clips-header h2 { font-size: 15px; font-weight: 600; }
+    .clips-header .count {
+      font-size: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 2px 10px;
+      border-radius: 20px;
+      color: var(--muted);
+    }
+
+    .clip-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .clip-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: border-color .15s;
+      cursor: pointer;
+    }
+    .clip-card:hover { border-color: var(--accent-dim); }
+    .clip-card.selected { border-color: var(--accent); background: #1e1510; }
+
+    .clip-card input[type="checkbox"] {
+      width: 16px; height: 16px;
+      accent-color: var(--accent);
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .clip-id {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      width: 24px;
+      flex-shrink: 0;
+    }
+
+    .clip-badge {
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+      min-width: 96px;
+      text-align: center;
+    }
+    .badge-double    { background: #1a2e1a; color: #3fb950; }
+    .badge-triple    { background: #2a1f0a; color: #f0883e; }
+    .badge-quad      { background: #2a0a0a; color: #f85149; }
+    .badge-penta     { background: #2a002a; color: #d2a8ff; }
+    .badge-streak    { background: #1a1a2a; color: #79c0ff; }
+    .badge-single    { background: #1e1e1e; color: #8b949e; }
+    .badge-objective { background: #241e00; color: #d29922; }
+
+    .clip-times {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+    }
+    .clip-times .ts   { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .clip-times .dur  { font-size: 11px; color: var(--muted); }
+    .clip-times .kills { font-size: 11px; color: var(--muted); }
+
+    .capture-bar {
+      display: none;
+      padding: 14px 24px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      gap: 12px;
+      align-items: center;
+    }
+    .capture-bar.visible { display: flex; }
+    .capture-bar .sel-count { font-size: 13px; color: var(--muted); flex: 1; }
+    .capture-bar .btn { width: auto; }
+
+    /* ── Log ── */
+    #log {
+      font-size: 11px;
+      color: var(--muted);
+      padding: 8px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      min-height: 28px;
+    }
+    #log.error { color: var(--red); }
+    #log.ok    { color: var(--green); }
+
+    .spinner {
+      display: inline-block;
+      width: 12px; height: 12px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ Deadlock Auto-Clipper</h1>
+  <span class="badge">Phases 1–2</span>
+</header>
+
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <aside>
+
+    <!-- File -->
+    <div>
+      <div class="section-label">Match File</div>
+      <div class="field">
+        <label for="file-select">Replay (.dem)</label>
+        <select id="file-select">
+          <option value="">— select file —</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="custom-path">Or enter path manually</label>
+        <input type="text" id="custom-path" placeholder="path/to/match.dem" />
+      </div>
+      <button class="btn btn-secondary" id="load-btn">Load Match</button>
+    </div>
+
+    <!-- Player -->
+    <div id="player-section" style="display:none">
+      <div class="section-label">Target Player</div>
+      <div class="field">
+        <label for="player-select">Player</label>
+        <select id="player-select">
+          <option value="">All players</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Event type -->
+    <div id="event-section" style="display:none">
+      <div class="section-label">Event Type</div>
+      <div class="field">
+        <label for="event-type">Detect</label>
+        <select id="event-type">
+          <option value="multikill">Multi-kill</option>
+          <option value="single_kill">Single Kill</option>
+          <option value="kill_streak">Kill Streak</option>
+          <option value="objective">Objective Destroyed</option>
+        </select>
+      </div>
+
+      <!-- multikill params -->
+      <div id="params-multikill" class="field row-2">
+        <div>
+          <label for="threshold">Min kills</label>
+          <input type="number" id="threshold" value="2" min="2" max="12" />
+        </div>
+        <div>
+          <label for="window">Window (s)</label>
+          <input type="number" id="window" value="10" min="1" max="60" />
+        </div>
+      </div>
+
+      <!-- kill_streak params -->
+      <div id="params-kill_streak" class="field" style="display:none">
+        <label for="streak-threshold">Min streak length</label>
+        <input type="number" id="streak-threshold" value="3" min="2" max="20" />
+      </div>
+
+      <!-- objective params -->
+      <div id="params-objective" style="display:none">
+        <div class="field">
+          <label for="obj-types">Objective types (hold Ctrl to multi-select)</label>
+          <select id="obj-types" multiple style="height:80px">
+            <option value="walker" selected>Walker</option>
+            <option value="barracks">Barracks</option>
+            <option value="shrine">Shrine</option>
+            <option value="patron" selected>Patron</option>
+            <option value="mid_boss">Mid Boss</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Clip timing -->
+    <div id="timing-section" style="display:none">
+      <div class="section-label">Clip Timing (ticks)</div>
+      <div class="field row-2">
+        <div>
+          <label for="lead">Lead-in</label>
+          <input type="number" id="lead" value="200" min="0" step="64" />
+        </div>
+        <div>
+          <label for="buffer">Buffer</label>
+          <input type="number" id="buffer" value="300" min="0" step="64" />
+        </div>
+      </div>
+      <button class="btn btn-primary" id="analyze-btn">Find Clips</button>
+    </div>
+
+    <div id="log">Ready.</div>
+
+  </aside>
+
+  <!-- ── Main ── -->
+  <div style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+
+    <!-- Match info strip -->
+    <div id="match-info">
+      <div class="info-item">
+        <span class="val" id="info-id">—</span>
+        <span class="lbl">Match ID</span>
+      </div>
+      <div class="info-item">
+        <span class="val" id="info-dur">—</span>
+        <span class="lbl">Duration</span>
+      </div>
+      <div class="info-item">
+        <span class="val" id="info-map">—</span>
+        <span class="lbl">Map</span>
+      </div>
+      <div class="info-item">
+        <span class="val" id="info-winner">—</span>
+        <span class="lbl">Winner</span>
+      </div>
+      <div class="info-item">
+        <span class="val" id="info-kills">—</span>
+        <span class="lbl">Total Kills</span>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <main>
+      <div class="content" id="content">
+        <div class="empty-state" id="empty-state">
+          <div class="icon">🎬</div>
+          <p>Load a <strong>.dem</strong> replay file and click <strong>Find Clips</strong> to detect highlight moments.</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Capture bar (sticky bottom) -->
+    <div class="capture-bar" id="capture-bar">
+      <span class="sel-count" id="sel-count">0 clips selected</span>
+      <button class="btn btn-secondary" id="deselect-all-btn">Deselect All</button>
+      <button class="btn btn-green" id="capture-btn">▶ Capture Selected</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────────
+  let currentDem = null;
+  let parsedData  = null;
+  let clips       = [];
+
+  // ── Elements ───────────────────────────────────────────────────────────────
+  const fileSelect    = document.getElementById('file-select');
+  const customPath    = document.getElementById('custom-path');
+  const loadBtn       = document.getElementById('load-btn');
+  const playerSelect  = document.getElementById('player-select');
+  const analyzeBtn    = document.getElementById('analyze-btn');
+  const logEl         = document.getElementById('log');
+  const matchInfo     = document.getElementById('match-info');
+  const contentEl     = document.getElementById('content');
+  const emptyState    = document.getElementById('empty-state');
+  const captureBar    = document.getElementById('capture-bar');
+  const selCount      = document.getElementById('sel-count');
+  const captureBtn    = document.getElementById('capture-btn');
+  const deselectBtn   = document.getElementById('deselect-all-btn');
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function setLog(msg, type = '') {
+    logEl.className = type;
+    logEl.innerHTML = msg;
+  }
+
+  function ticksToTime(ticks, tickRate) {
+    const totalSec = Math.floor(ticks / tickRate);
+    const m = Math.floor(totalSec / 60);
+    const s = String(totalSec % 60).padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  function clipBadgeClass(clip) {
+    const r = clip.reason;
+    if (r.startsWith('Double'))  return 'badge-double';
+    if (r.startsWith('Triple'))  return 'badge-triple';
+    if (r.startsWith('Quad'))    return 'badge-quad';
+    if (r.startsWith('Penta'))   return 'badge-penta';
+    if (clip.event_type === 'single_kill') return 'badge-single';
+    if (clip.event_type === 'objective')   return 'badge-objective';
+    return 'badge-streak';
+  }
+
+  function teamLabel(teamNum) {
+    const labels = { 1: 'Spectator', 2: 'Amber Hand', 3: 'Sapphire Flame' };
+    return labels[teamNum] || `Team ${teamNum}`;
+  }
+
+  function teamClass(teamNum) {
+    return teamNum === 2 ? 'team-2' : 'team-3';
+  }
+
+  function winnerLabel(teamNum) {
+    if (teamNum === null || teamNum === undefined) return 'N/A';
+    return `<span class="team-badge ${teamClass(teamNum)}">${teamLabel(teamNum)}</span>`;
+  }
+
+  // ── File list ──────────────────────────────────────────────────────────────
+  async function loadFileList() {
+    try {
+      const res  = await fetch('/api/files');
+      const data = await res.json();
+      data.files.forEach(f => {
+        const opt  = document.createElement('option');
+        opt.value  = f.path;
+        opt.text   = f.name;
+        fileSelect.appendChild(opt);
+      });
+    } catch { /* silently ignore if no files */ }
+  }
+
+  // ── Load match ─────────────────────────────────────────────────────────────
+  loadBtn.addEventListener('click', async () => {
+    const path = customPath.value.trim() || fileSelect.value;
+    if (!path) { setLog('Select or enter a .dem file path.', 'error'); return; }
+
+    setLog('<span class="spinner"></span>Parsing demo…');
+    loadBtn.disabled = true;
+
+    try {
+      const res  = await fetch('/api/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dem_path: path }),
+      });
+      const data = await res.json();
+
+      if (data.status !== 'ok') {
+        setLog(`Error: ${data.message}`, 'error');
+        return;
+      }
+
+      currentDem = path;
+      parsedData = data.data;
+
+      // Populate match info bar
+      document.getElementById('info-id').textContent     = parsedData.match_id;
+      document.getElementById('info-dur').textContent    = parsedData.total_clock_time;
+      document.getElementById('info-map').textContent    = parsedData.map_name;
+      document.getElementById('info-winner').innerHTML   = winnerLabel(parsedData.winning_team_num);
+      document.getElementById('info-kills').textContent  = parsedData.kills.length;
+      matchInfo.classList.add('visible');
+
+      // Populate player dropdown
+      playerSelect.innerHTML = '<option value="">All players</option>';
+      parsedData.players
+        .sort((a, b) => a.team_num - b.team_num || a.player_name.localeCompare(b.player_name))
+        .forEach(p => {
+          const opt   = document.createElement('option');
+          opt.value   = p.steam_id;
+          opt.text    = `${p.player_name} (${p.hero_name}) · ${teamLabel(p.team_num)}`;
+          playerSelect.appendChild(opt);
+        });
+
+      // Show sidebar sections
+      document.getElementById('player-section').style.display  = '';
+      document.getElementById('event-section').style.display   = '';
+      document.getElementById('timing-section').style.display  = '';
+
+      setLog(`Loaded match ${parsedData.match_id} — ${parsedData.players.length} players, ${parsedData.kills.length} kills.`, 'ok');
+      clearClips();
+
+    } catch (err) {
+      setLog(`Unexpected error: ${err.message}`, 'error');
+    } finally {
+      loadBtn.disabled = false;
+    }
+  });
+
+  // ── Event type param visibility ─────────────────────────────────────────────
+  const eventTypeSelect = document.getElementById('event-type');
+  const allParamDivs = ['multikill', 'kill_streak', 'objective'];
+
+  function updateParamVisibility() {
+    const val = eventTypeSelect.value;
+    allParamDivs.forEach(id => {
+      document.getElementById(`params-${id}`).style.display = (id === val) ? '' : 'none';
+    });
+    // Player select is irrelevant for objectives
+    const playerSection = document.getElementById('player-section');
+    if (playerSection) playerSection.style.opacity = val === 'objective' ? '0.4' : '';
+  }
+  eventTypeSelect.addEventListener('change', updateParamVisibility);
+
+  // ── Analyze ─────────────────────────────────────────────────────────────────
+  analyzeBtn.addEventListener('click', async () => {
+    if (!currentDem) { setLog('Load a match first.', 'error'); return; }
+
+    setLog('<span class="spinner"></span>Analyzing…');
+    analyzeBtn.disabled = true;
+
+    const eventType = eventTypeSelect.value;
+    const body = {
+      dem_path:    currentDem,
+      steam_id:    document.getElementById('player-select').value,
+      event_type:  eventType,
+      lead_ticks:  Number(document.getElementById('lead').value),
+      buffer_ticks: Number(document.getElementById('buffer').value),
+    };
+    if (eventType === 'multikill') {
+      body.window_seconds = Number(document.getElementById('window').value);
+      body.threshold      = Number(document.getElementById('threshold').value);
+    } else if (eventType === 'kill_streak') {
+      body.streak_threshold = Number(document.getElementById('streak-threshold').value);
+    } else if (eventType === 'objective') {
+      body.objective_types = [...document.getElementById('obj-types').selectedOptions].map(o => o.value);
+    }
+
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+
+      if (data.status !== 'ok') { setLog(`Error: ${data.message}`, 'error'); return; }
+
+      clips = data.clips;
+      renderClips();
+
+      const n = clips.length;
+      setLog(`Found ${n} clip zone${n !== 1 ? 's' : ''}.`, n > 0 ? 'ok' : '');
+
+    } catch (err) {
+      setLog(`Unexpected error: ${err.message}`, 'error');
+    } finally {
+      analyzeBtn.disabled = false;
+    }
+  });
+
+  // ── Render clips ────────────────────────────────────────────────────────────
+  function clearClips() {
+    clips = [];
+    contentEl.innerHTML = '';
+    contentEl.appendChild(emptyState);
+    emptyState.style.display = '';
+    captureBar.classList.remove('visible');
+  }
+
+  function renderClips() {
+    contentEl.innerHTML = '';
+    const tickRate = parsedData?.tick_rate || 64;
+
+    if (clips.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.innerHTML = `<div class="icon">🔍</div><p>No clip zones found with the current settings. Try lowering the threshold or increasing the time window.</p>`;
+      contentEl.appendChild(empty);
+      captureBar.classList.remove('visible');
+      return;
+    }
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'clips-header';
+    header.innerHTML = `<h2>Clip Zones</h2><span class="count">${clips.length} found</span>`;
+    contentEl.appendChild(header);
+
+    // Cards
+    const list = document.createElement('div');
+    list.className = 'clip-list';
+
+    clips.forEach(clip => {
+      const startTime = ticksToTime(clip.start_tick, tickRate);
+      const endTime   = ticksToTime(clip.end_tick, tickRate);
+      const durationS = ((clip.end_tick - clip.start_tick) / tickRate).toFixed(1);
+
+      let midLine, bottomLine;
+      if (clip.event_type === 'objective') {
+        midLine    = `<span class="dur">${durationS}s</span>`;
+        bottomLine = `<span class="kills">${clip.detail}</span>`;
+      } else if (clip.event_type === 'single_kill') {
+        midLine    = `<span class="dur">${durationS}s · 1 kill</span>`;
+        bottomLine = `<span class="kills">${clip.detail}</span>`;
+      } else {
+        const killTimes = clip.kill_ticks.map(t => ticksToTime(t, tickRate)).join(', ');
+        midLine    = `<span class="dur">${durationS}s · ${clip.kill_count} kills</span>`;
+        bottomLine = clip.detail
+          ? `<span class="kills">${clip.detail}</span>`
+          : `<span class="kills">At: ${killTimes}</span>`;
+      }
+
+      const card = document.createElement('div');
+      card.className = 'clip-card selected';
+      card.dataset.clipId = clip.clip_id;
+      card.innerHTML = `
+        <input type="checkbox" checked data-id="${clip.clip_id}" />
+        <span class="clip-id">${clip.clip_id}</span>
+        <span class="clip-badge ${clipBadgeClass(clip)}">${clip.reason}</span>
+        <div class="clip-times">
+          <span class="ts">${startTime} → ${endTime}</span>
+          ${midLine}
+          ${bottomLine}
+        </div>
+      `;
+
+      // Toggle selection
+      card.addEventListener('click', e => {
+        const cb = card.querySelector('input[type="checkbox"]');
+        if (e.target !== cb) cb.checked = !cb.checked;
+        card.classList.toggle('selected', cb.checked);
+        updateCaptureBar();
+      });
+
+      list.appendChild(card);
+    });
+
+    contentEl.appendChild(list);
+    captureBar.classList.add('visible');
+    updateCaptureBar();
+  }
+
+  function updateCaptureBar() {
+    const checked = contentEl.querySelectorAll('input[type="checkbox"]:checked').length;
+    selCount.textContent = `${checked} clip${checked !== 1 ? 's' : ''} selected`;
+    captureBtn.disabled = checked === 0;
+  }
+
+  deselectBtn.addEventListener('click', () => {
+    contentEl.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.checked = false;
+      cb.closest('.clip-card').classList.remove('selected');
+    });
+    updateCaptureBar();
+  });
+
+  captureBtn.addEventListener('click', () => {
+    const selected = [...contentEl.querySelectorAll('input[type="checkbox"]:checked')]
+      .map(cb => cb.dataset.id);
+    alert(`Capture pipeline not yet implemented (Phase 3).\n\nSelected clips: ${selected.join(', ')}`);
+  });
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  loadFileList();
+</script>
+</body>
+</html>

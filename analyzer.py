@@ -1,0 +1,308 @@
+import json
+import logging
+import sys
+from pathlib import Path
+
+import yaml
+
+logger = logging.getLogger(__name__)
+
+_KILL_LABELS = {
+    2: "Double Kill",
+    3: "Triple Kill",
+    4: "Quad Kill",
+    5: "Penta Kill",
+}
+
+_TEAM_NAMES = {2: "Amber Hand", 3: "Sapphire Flame"}
+_LANE_NAMES = {1: "Yellow", 4: "Blue", 6: "Purple"}
+
+_OBJECTIVE_LABELS = {
+    "walker": "Walker Destroyed",
+    "barracks": "Barracks Destroyed",
+    "shrine": "Shrine Destroyed",
+    "patron": "Patron Killed",
+    "mid_boss": "Mid Boss Killed",
+}
+
+
+def load_config(config_path: str = "config.yaml") -> dict:
+    with open(config_path) as f:
+        return yaml.safe_load(f)
+
+
+def find_player_hero_id(players: list[dict], steam_id: str | int) -> int | None:
+    target = str(steam_id)
+    for p in players:
+        if str(p["steam_id"]) == target:
+            return p["hero_id"]
+    return None
+
+
+def find_multikills(
+    kills: list[dict],
+    target_hero_id: int,
+    window_ticks: int,
+    threshold: int,
+    lead_ticks: int,
+    buffer_ticks: int,
+) -> list[dict]:
+    """Detect multi-kill sequences for a single hero.
+
+    Uses a greedy left-anchor approach: anchor on each kill in order and collect
+    all subsequent kills that fall within `window_ticks`. Groups that meet
+    `threshold` become clip zones. Each kill is consumed into at most one group.
+    """
+    player_kills = sorted(
+        (k for k in kills if k["attacker_hero_id"] == target_hero_id),
+        key=lambda k: k["tick"],
+    )
+
+    if not player_kills:
+        return []
+
+    clip_zones: list[dict] = []
+    consumed: set[int] = set()
+
+    for i, anchor in enumerate(player_kills):
+        if i in consumed:
+            continue
+
+        group = [anchor]
+        for j in range(i + 1, len(player_kills)):
+            if player_kills[j]["tick"] - anchor["tick"] <= window_ticks:
+                group.append(player_kills[j])
+            else:
+                break
+
+        if len(group) >= threshold:
+            for k in range(i, i + len(group)):
+                consumed.add(k)
+
+            first_tick = group[0]["tick"]
+            last_tick = group[-1]["tick"]
+            count = len(group)
+            reason = _KILL_LABELS.get(count, f"{count}x Kill Streak")
+
+            clip_zones.append(
+                {
+                    "start_tick": max(0, first_tick - lead_ticks),
+                    "end_tick": last_tick + buffer_ticks,
+                    "kill_count": count,
+                    "reason": reason,
+                    "kill_ticks": [k["tick"] for k in group],
+                    "event_type": "multikill",
+                    "detail": "",
+                }
+            )
+
+    return clip_zones
+
+
+def find_single_kills(
+    kills: list[dict],
+    target_hero_id: int,
+    lead_ticks: int,
+    buffer_ticks: int,
+) -> list[dict]:
+    """One clip zone per kill by the target hero."""
+    player_kills = sorted(
+        (k for k in kills if k["attacker_hero_id"] == target_hero_id),
+        key=lambda k: k["tick"],
+    )
+    return [
+        {
+            "start_tick": max(0, k["tick"] - lead_ticks),
+            "end_tick": k["tick"] + buffer_ticks,
+            "kill_count": 1,
+            "reason": "Kill",
+            "kill_ticks": [k["tick"]],
+            "event_type": "single_kill",
+            "detail": f"vs {k['victim_hero_name']}",
+        }
+        for k in player_kills
+    ]
+
+
+def find_kill_streaks(
+    kills: list[dict],
+    target_hero_id: int,
+    streak_threshold: int,
+    lead_ticks: int,
+    buffer_ticks: int,
+) -> list[dict]:
+    """Detect kill streaks (consecutive kills without dying) for a single hero.
+
+    Distinct from multi-kill: a streak resets only on death, not on time.
+    One clip zone is emitted per streak run that reaches `streak_threshold`,
+    extended as additional kills are added to the same run.
+    """
+    events: list[tuple[str, int, dict]] = []
+    for k in kills:
+        if k["attacker_hero_id"] == target_hero_id:
+            events.append(("kill", k["tick"], k))
+        if k["victim_hero_id"] == target_hero_id:
+            events.append(("death", k["tick"], k))
+    events.sort(key=lambda e: e[1])
+
+    current_streak = 0
+    streak_kills: list[dict] = []
+    active_zone: dict | None = None
+    clip_zones: list[dict] = []
+
+    for ev_type, _tick, k in events:
+        if ev_type == "death":
+            if active_zone is not None:
+                clip_zones.append(active_zone)
+                active_zone = None
+            current_streak = 0
+            streak_kills = []
+        else:
+            current_streak += 1
+            streak_kills.append(k)
+
+            if current_streak == streak_threshold:
+                active_zone = {
+                    "start_tick": max(0, streak_kills[0]["tick"] - lead_ticks),
+                    "end_tick": k["tick"] + buffer_ticks,
+                    "kill_count": current_streak,
+                    "reason": f"{current_streak}x Kill Streak",
+                    "kill_ticks": [kk["tick"] for kk in streak_kills],
+                    "event_type": "kill_streak",
+                    "detail": f"Streak of {current_streak} (no death)",
+                }
+            elif current_streak > streak_threshold and active_zone is not None:
+                active_zone["end_tick"] = k["tick"] + buffer_ticks
+                active_zone["kill_count"] = current_streak
+                active_zone["reason"] = f"{current_streak}x Kill Streak"
+                active_zone["kill_ticks"].append(k["tick"])
+                active_zone["detail"] = f"Streak of {current_streak} (no death)"
+
+    if active_zone is not None:
+        clip_zones.append(active_zone)
+
+    return clip_zones
+
+
+def find_objective_destructions(
+    objectives_destroyed: list[dict],
+    objective_types: list[str],
+    lead_ticks: int,
+    buffer_ticks: int,
+) -> list[dict]:
+    """One clip zone per destroyed objective matching the requested types."""
+    result: list[dict] = []
+    for obj in objectives_destroyed:
+        if obj["objective_type"] not in objective_types:
+            continue
+
+        team_label = _TEAM_NAMES.get(obj["team_num"], f"Team {obj['team_num']}")
+        lane_label = _LANE_NAMES.get(obj["lane"], "")
+        detail = team_label + (f" · {lane_label} Lane" if lane_label else "")
+        reason = _OBJECTIVE_LABELS.get(obj["objective_type"], obj["objective_type"].title())
+
+        result.append(
+            {
+                "start_tick": max(0, obj["tick"] - lead_ticks),
+                "end_tick": obj["tick"] + buffer_ticks,
+                "kill_count": 0,
+                "reason": reason,
+                "kill_ticks": [obj["tick"]],
+                "event_type": "objective",
+                "detail": detail,
+            }
+        )
+    return result
+
+
+def analyze(parsed_data: dict, config: dict) -> list[dict]:
+    """Identify clip zones from parsed match data using rules from config.
+
+    Returns:
+        List of clip zone objects with clip_id, start_tick, end_tick, reason,
+        event_type, detail, kill_count, kill_ticks.
+    """
+    cfg = config.get("analyzer", {})
+    event_type: str = cfg.get("event_type", "multikill")
+    steam_id: str = cfg.get("target_player_steam_id", "")
+    lead_ticks: int = int(cfg.get("clip_lead_ticks", 200))
+    buffer_ticks: int = int(cfg.get("clip_buffer_ticks", 300))
+
+    tick_rate: int = parsed_data.get("tick_rate", 64)
+    players: list[dict] = parsed_data.get("players", [])
+    kills: list[dict] = parsed_data.get("kills", [])
+    objectives_destroyed: list[dict] = parsed_data.get("objectives_destroyed", [])
+
+    if event_type == "objective":
+        objective_types: list[str] = cfg.get("objective_types", ["walker", "patron"])
+        zones = find_objective_destructions(objectives_destroyed, objective_types, lead_ticks, buffer_ticks)
+
+    else:
+        # Resolve target hero
+        hero_id: int | None = None
+        if steam_id:
+            hero_id = find_player_hero_id(players, steam_id)
+            if hero_id is None:
+                logger.warning("Steam ID %s not found in this match — no clips generated.", steam_id)
+                return []
+            logger.info("Analyzing %s for hero_id=%d (steam_id=%s)", event_type, hero_id, steam_id)
+
+        def _for_all_players(fn, *args):
+            result = []
+            for p in players:
+                result.extend(fn(kills, p["hero_id"], *args))
+            result.sort(key=lambda z: z["start_tick"])
+            return result
+
+        if event_type == "single_kill":
+            if hero_id is not None:
+                zones = find_single_kills(kills, hero_id, lead_ticks, buffer_ticks)
+            else:
+                zones = _for_all_players(find_single_kills, lead_ticks, buffer_ticks)
+
+        elif event_type == "kill_streak":
+            streak_threshold: int = int(cfg.get("kill_streak_threshold", 3))
+            if hero_id is not None:
+                zones = find_kill_streaks(kills, hero_id, streak_threshold, lead_ticks, buffer_ticks)
+            else:
+                zones = _for_all_players(find_kill_streaks, streak_threshold, lead_ticks, buffer_ticks)
+
+        else:  # multikill (default)
+            window_seconds: float = float(cfg.get("multikill_window_seconds", 10))
+            threshold: int = int(cfg.get("multikill_threshold", 2))
+            window_ticks: int = int(window_seconds * tick_rate)
+            if hero_id is not None:
+                zones = find_multikills(kills, hero_id, window_ticks, threshold, lead_ticks, buffer_ticks)
+            else:
+                zones = _for_all_players(find_multikills, window_ticks, threshold, lead_ticks, buffer_ticks)
+
+    result = [{"clip_id": f"{i:02d}", **zone} for i, zone in enumerate(zones, start=1)]
+    logger.info("Found %d clip zone(s) [event_type=%s] in match %s.", len(result), event_type, parsed_data.get("match_id"))
+    return result
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+
+    if len(sys.argv) < 2:
+        print("Usage: python analyzer.py <path/to/parsed.json>")
+        sys.exit(1)
+
+    config = load_config()
+
+    with open(sys.argv[1]) as f:
+        parsed_data = json.load(f)
+
+    clips = analyze(parsed_data, config)
+
+    tick_rate = parsed_data.get("tick_rate", 64)
+    print(f"\nFound {len(clips)} clip zone(s) in match {parsed_data['match_id']}:")
+    for clip in clips:
+        start_s = clip["start_tick"] / tick_rate
+        end_s = clip["end_tick"] / tick_rate
+        print(
+            f"  [{clip['clip_id']}] {clip['reason']:<22} "
+            f"ticks {clip['start_tick']}–{clip['end_tick']}  "
+            f"({start_s:.1f}s – {end_s:.1f}s)"
+            + (f"  {clip['detail']}" if clip.get("detail") else "")
+        )

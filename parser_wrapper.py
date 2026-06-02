@@ -37,13 +37,14 @@ def parse_demo(dem_path: str | Path, output_path: str | Path | None = None) -> d
 
     try:
         demo = Demo(str(dem_path))
-        demo.load("kills")
+        demo.load("kills", "objectives")
     except (InvalidDemoError, DemoHeaderError) as exc:
         raise RuntimeError(f"Failed to parse {dem_path.name}: {exc}") from exc
 
     heroes = hero_names()
     kills_df = demo.kills
     players_df = demo.players
+    objectives_df = demo.objectives
 
     kills = [
         {
@@ -59,7 +60,7 @@ def parse_demo(dem_path: str | Path, output_path: str | Path | None = None) -> d
 
     players = [
         {
-            "steam_id": row["steam_id"],
+            "steam_id": str(row["steam_id"]),
             "player_name": row["player_name"],
             "hero_id": row["hero_id"],
             "hero_name": heroes.get(row["hero_id"], "Unknown"),
@@ -67,6 +68,20 @@ def parse_demo(dem_path: str | Path, output_path: str | Path | None = None) -> d
         }
         for row in players_df.rows(named=True)
     ]
+
+    # Objective destructions: one row per destroyed structure (deduplicated by entity_id)
+    dest_rows = objectives_df.filter(objectives_df["health"] == 0).sort("tick")
+    seen_entities: set[int] = set()
+    objectives_destroyed: list[dict] = []
+    for row in dest_rows.rows(named=True):
+        if row["entity_id"] not in seen_entities:
+            seen_entities.add(row["entity_id"])
+            objectives_destroyed.append({
+                "tick": row["tick"],
+                "objective_type": row["objective_type"],
+                "team_num": row["team_num"],
+                "lane": row["lane"],
+            })
 
     payload = {
         "match_id": demo.match_id,
@@ -77,6 +92,7 @@ def parse_demo(dem_path: str | Path, output_path: str | Path | None = None) -> d
         "winning_team_num": demo.winning_team_num,
         "players": players,
         "kills": kills,
+        "objectives_destroyed": objectives_destroyed,
     }
 
     if output_path is not None:
