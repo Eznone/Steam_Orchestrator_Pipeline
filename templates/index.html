@@ -285,19 +285,134 @@
       margin-right: 6px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Tab navigation ── */
+    .tab-bar {
+      display: flex;
+      margin: -20px -16px 4px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 12px 0;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: color .15s, border-color .15s;
+    }
+    .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+    .sidebar-page { display: flex; flex-direction: column; gap: 24px; }
+
+    /* ── OBS/recording status badges ── */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .badge-disconnected { background: var(--surface2); color: var(--muted); }
+    .badge-disconnected .status-dot { background: var(--muted); }
+    .badge-connected    { background: #122212; color: var(--green); }
+    .badge-connected    .status-dot { background: var(--green); }
+    .badge-recording-obs { background: #2a0a0a; color: var(--red); }
+    .badge-recording-obs .status-dot { background: var(--red); animation: pulse 1s ease infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+
+    /* ── OBS status strip ── */
+    #obs-status-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    /* ── Recording clip cards ── */
+    .rec-clip-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .clip-status {
+      font-size: 11px;
+      font-weight: 600;
+      min-width: 80px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .clip-status-queued    { background: var(--surface2); color: var(--muted); }
+    .clip-status-preparing { background: #1a1a2a; color: #79c0ff; }
+    .clip-status-recording { background: #2a0a0a; color: var(--red); }
+    .clip-status-done      { background: #122212; color: var(--green); }
+    .clip-status-error     { background: #2a1010; color: var(--red); }
+
+    /* ── Batch record bar ── */
+    .record-all-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 24px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    /* ── Extra button variants ── */
+    .btn-red { background: var(--red); color: #fff; }
+    .btn-sm  { width: auto; padding: 5px 10px; font-size: 12px; }
+
+    /* ── Rec log ── */
+    #rec-log {
+      font-size: 11px;
+      color: var(--muted);
+      padding: 8px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      min-height: 28px;
+    }
+    #rec-log.error { color: var(--red); }
+    #rec-log.ok    { color: var(--green); }
   </style>
 </head>
 <body>
 
 <header>
   <h1>⚡ Deadlock Auto-Clipper</h1>
-  <span class="badge">Phases 1–2</span>
+  <span class="badge">Phases 1–3</span>
 </header>
 
 <div class="layout">
 
   <!-- ── Sidebar ── -->
   <aside>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" data-page="analysis">Analysis</button>
+      <button class="tab-btn" data-page="recording">Recording</button>
+    </div>
+
+    <!-- Analysis page controls -->
+    <div id="page-analysis-sidebar" class="sidebar-page">
 
     <!-- File -->
     <div>
@@ -390,10 +505,78 @@
 
     <div id="log">Ready.</div>
 
+    </div><!-- #page-analysis-sidebar -->
+
+    <!-- Recording page controls -->
+    <div id="page-recording-sidebar" class="sidebar-page" style="display:none">
+
+      <!-- OBS Connection -->
+      <div>
+        <div class="section-label">OBS Connection</div>
+        <div class="field">
+          <label for="obs-host">Host</label>
+          <input type="text" id="obs-host" value="localhost" />
+        </div>
+        <div class="field row-2">
+          <div>
+            <label for="obs-port">Port</label>
+            <input type="number" id="obs-port" value="4455" />
+          </div>
+          <div>
+            <label for="obs-password">Password</label>
+            <input type="text" id="obs-password" placeholder="(none)" />
+          </div>
+        </div>
+        <div class="field" style="display:flex; align-items:center; gap:8px">
+          <span id="obs-status-badge" class="status-badge badge-disconnected">
+            <span class="status-dot"></span> Disconnected
+          </span>
+        </div>
+        <div class="row-2 field">
+          <button class="btn btn-secondary" id="obs-connect-btn">Connect</button>
+          <button class="btn btn-secondary" id="obs-disconnect-btn" disabled>Disconnect</button>
+        </div>
+      </div>
+
+      <!-- Game Launch -->
+      <div>
+        <div class="section-label">Game Launch</div>
+        <div class="field">
+          <label for="steam-exe">Steam EXE Path</label>
+          <input type="text" id="steam-exe" placeholder="C:\...\steam.exe" />
+        </div>
+        <div class="field row-2">
+          <div>
+            <label for="launch-wait">Launch Wait (s)</label>
+            <input type="number" id="launch-wait" value="30" min="5" max="120" />
+          </div>
+          <div>
+            <label for="seek-settle">Seek Settle (s)</label>
+            <input type="number" id="seek-settle" value="2" min="0" max="30" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Manual controls -->
+      <div>
+        <div class="section-label">Manual Controls</div>
+        <div class="row-2 field">
+          <button class="btn btn-green" id="rec-start-btn" disabled>Start Rec</button>
+          <button class="btn btn-red" id="rec-stop-btn" disabled>Stop Rec</button>
+        </div>
+      </div>
+
+      <div id="rec-log">Ready.</div>
+
+    </div><!-- #page-recording-sidebar -->
+
   </aside>
 
   <!-- ── Main ── -->
   <div style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+
+    <!-- Analysis page -->
+    <div id="main-analysis" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
 
     <!-- Match info strip -->
     <div id="match-info">
@@ -433,8 +616,34 @@
     <div class="capture-bar" id="capture-bar">
       <span class="sel-count" id="sel-count">0 clips selected</span>
       <button class="btn btn-secondary" id="deselect-all-btn">Deselect All</button>
-      <button class="btn btn-green" id="capture-btn">▶ Capture Selected</button>
+      <button class="btn btn-green" id="capture-btn">▶ Go to Recording</button>
     </div>
+
+    </div><!-- #main-analysis -->
+
+    <!-- Recording page -->
+    <div id="main-recording" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+
+      <div id="obs-status-bar">
+        <span>OBS:</span>
+        <span id="obs-status-text">Not connected</span>
+      </div>
+
+      <div style="flex:1; overflow-y:auto;">
+        <div class="content" id="rec-content">
+          <div class="empty-state" id="rec-empty">
+            <div class="icon">🎞</div>
+            <p>Run <strong>Find Clips</strong> on the Analysis page first. Clips will appear here for recording.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="record-all-bar" id="record-all-bar" style="display:none">
+        <span style="flex:1; font-size:13px; color:var(--muted)" id="rec-sel-count">0 clips selected</span>
+        <button class="btn btn-primary btn-sm" id="record-selected-btn">▶ Record Selected</button>
+      </div>
+
+    </div><!-- #main-recording -->
 
   </div>
 </div>
@@ -635,10 +844,12 @@
   // ── Render clips ────────────────────────────────────────────────────────────
   function clearClips() {
     clips = [];
+    Object.keys(clipStates).forEach(k => delete clipStates[k]);
     contentEl.innerHTML = '';
     contentEl.appendChild(emptyState);
     emptyState.style.display = '';
     captureBar.classList.remove('visible');
+    if (currentPage === 'recording') renderRecordingQueue();
   }
 
   function renderClips() {
@@ -712,6 +923,7 @@
     contentEl.appendChild(list);
     captureBar.classList.add('visible');
     updateCaptureBar();
+    if (currentPage === 'recording') renderRecordingQueue();
   }
 
   function updateCaptureBar() {
@@ -729,9 +941,318 @@
   });
 
   captureBtn.addEventListener('click', () => {
-    const selected = [...contentEl.querySelectorAll('input[type="checkbox"]:checked')]
-      .map(cb => cb.dataset.id);
-    alert(`Capture pipeline not yet implemented (Phase 3).\n\nSelected clips: ${selected.join(', ')}`);
+    switchPage('recording');
+  });
+
+  // ── Recording page state ───────────────────────────────────────────────────
+  let currentPage = 'analysis';
+  const clipStates = {};  // clip_id -> {status, message}
+
+  // ── Page navigation ────────────────────────────────────────────────────────
+  function switchPage(page) {
+    currentPage = page;
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.page === page);
+    });
+    document.getElementById('main-analysis').style.display           = page === 'analysis'  ? 'flex' : 'none';
+    document.getElementById('main-recording').style.display          = page === 'recording' ? 'flex' : 'none';
+    document.getElementById('page-analysis-sidebar').style.display   = page === 'analysis'  ? '' : 'none';
+    document.getElementById('page-recording-sidebar').style.display  = page === 'recording' ? '' : 'none';
+    if (page === 'recording') {
+      renderRecordingQueue();
+      pollObsStatus();
+    }
+  }
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchPage(btn.dataset.page));
+  });
+
+  // ── OBS status polling ─────────────────────────────────────────────────────
+  async function pollObsStatus() {
+    try {
+      const res  = await fetch('/api/obs/status');
+      const data = await res.json();
+      updateObsBadge(data.connected, data.recording);
+      if (data.config_defaults && !document.getElementById('obs-host').dataset.loaded) {
+        const d = data.config_defaults;
+        document.getElementById('obs-host').value  = d.host  || 'localhost';
+        document.getElementById('obs-port').value  = d.port  || 4455;
+        if (d.password)            document.getElementById('obs-password').value  = d.password;
+        if (d.steam_exe)           document.getElementById('steam-exe').value     = d.steam_exe;
+        if (d.launch_wait_seconds) document.getElementById('launch-wait').value   = d.launch_wait_seconds;
+        if (d.seek_settle_seconds) document.getElementById('seek-settle').value   = d.seek_settle_seconds;
+        document.getElementById('obs-host').dataset.loaded = '1';
+      }
+    } catch { /* ignore */ }
+  }
+
+  function updateObsBadge(connected, recording) {
+    const badge      = document.getElementById('obs-status-badge');
+    const statusText = document.getElementById('obs-status-text');
+    if (!connected) {
+      badge.className = 'status-badge badge-disconnected';
+      badge.innerHTML = '<span class="status-dot"></span> Disconnected';
+      statusText.textContent = 'Not connected';
+    } else if (recording) {
+      badge.className = 'status-badge badge-recording-obs';
+      badge.innerHTML = '<span class="status-dot"></span> Recording';
+      statusText.textContent = 'Connected · Recording';
+    } else {
+      badge.className = 'status-badge badge-connected';
+      badge.innerHTML = '<span class="status-dot"></span> Connected';
+      statusText.textContent = 'Connected · Idle';
+    }
+    document.getElementById('obs-disconnect-btn').disabled = !connected;
+    document.getElementById('obs-connect-btn').disabled    = connected;
+    document.getElementById('rec-start-btn').disabled      = !connected || recording;
+    document.getElementById('rec-stop-btn').disabled       = !connected || !recording;
+  }
+
+  document.getElementById('obs-connect-btn').addEventListener('click', async () => {
+    setRecLog('<span class="spinner"></span>Connecting…');
+    document.getElementById('obs-connect-btn').disabled = true;
+    try {
+      const res  = await fetch('/api/obs/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          host:     document.getElementById('obs-host').value,
+          port:     Number(document.getElementById('obs-port').value),
+          password: document.getElementById('obs-password').value,
+        }),
+      });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        setRecLog(data.message, 'ok');
+        pollObsStatus();
+      } else {
+        setRecLog(`Error: ${data.message}`, 'error');
+        document.getElementById('obs-connect-btn').disabled = false;
+      }
+    } catch (err) {
+      setRecLog(`Unexpected error: ${err.message}`, 'error');
+      document.getElementById('obs-connect-btn').disabled = false;
+    }
+  });
+
+  document.getElementById('obs-disconnect-btn').addEventListener('click', async () => {
+    await fetch('/api/obs/disconnect', { method: 'POST' });
+    updateObsBadge(false, false);
+    setRecLog('Disconnected.');
+  });
+
+  document.getElementById('rec-start-btn').addEventListener('click', async () => {
+    const res  = await fetch('/api/record/start', { method: 'POST' });
+    const data = await res.json();
+    if (data.status === 'ok') { setRecLog('Recording started.', 'ok'); pollObsStatus(); }
+    else { setRecLog(`Error: ${data.message}`, 'error'); }
+  });
+
+  document.getElementById('rec-stop-btn').addEventListener('click', async () => {
+    const res  = await fetch('/api/record/stop', { method: 'POST' });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      setRecLog(data.output_path ? `Saved: ${data.output_path}` : 'Recording stopped.', 'ok');
+      pollObsStatus();
+    } else { setRecLog(`Error: ${data.message}`, 'error'); }
+  });
+
+  // ── Rec log ────────────────────────────────────────────────────────────────
+  const recLogEl = document.getElementById('rec-log');
+  function setRecLog(msg, type = '') {
+    recLogEl.className = type;
+    recLogEl.innerHTML = msg;
+  }
+
+  // ── Recording queue ────────────────────────────────────────────────────────
+  function renderRecordingQueue() {
+    const container = document.getElementById('rec-content');
+    const barEl     = document.getElementById('record-all-bar');
+
+    container.innerHTML = '';
+
+    if (!clips.length) {
+      const emptyEl = document.createElement('div');
+      emptyEl.className = 'empty-state';
+      emptyEl.innerHTML = '<div class="icon">🎞</div><p>Run <strong>Find Clips</strong> on the Analysis page first. Clips will appear here for recording.</p>';
+      container.appendChild(emptyEl);
+      barEl.style.display = 'none';
+      return;
+    }
+
+    const tickRate = parsedData?.tick_rate || 64;
+
+    const header = document.createElement('div');
+    header.className = 'clips-header';
+    header.innerHTML = `<h2>Clip Queue</h2><span class="count">${clips.length} clips</span>`;
+    container.appendChild(header);
+
+    const list = document.createElement('div');
+    list.className = 'clip-list';
+
+    clips.forEach(clip => {
+      const state     = clipStates[clip.clip_id] || { status: 'queued' };
+      const startTime = ticksToTime(clip.start_tick, tickRate);
+      const endTime   = ticksToTime(clip.end_tick,   tickRate);
+      const durationS = ((clip.end_tick - clip.start_tick) / tickRate).toFixed(1);
+      const isBusy    = state.status !== 'queued' && state.status !== 'done' && state.status !== 'error';
+
+      const card = document.createElement('div');
+      card.className = 'rec-clip-card';
+      card.dataset.clipId = clip.clip_id;
+      card.innerHTML = `
+        <input type="checkbox" class="rec-checkbox" data-id="${clip.clip_id}" ${isBusy ? 'disabled' : ''} />
+        <span class="clip-id">${clip.clip_id}</span>
+        <span class="clip-badge ${clipBadgeClass(clip)}">${clip.reason}</span>
+        <div class="clip-times" style="flex:1">
+          <span class="ts">${startTime} → ${endTime}</span>
+          <span class="dur">${durationS}s</span>
+        </div>
+        <span class="clip-status clip-status-${state.status}" title="${state.message || ''}">${state.status}</span>
+        <button class="btn btn-secondary btn-sm" onclick="prepareClip('${clip.clip_id}')" ${isBusy ? 'disabled' : ''}>Prepare</button>
+        <button class="btn btn-primary btn-sm" onclick="recordClip('${clip.clip_id}')" ${isBusy ? 'disabled' : ''}>Record</button>
+      `;
+      list.appendChild(card);
+    });
+
+    container.appendChild(list);
+    barEl.style.display = 'flex';
+    updateRecSelCount();
+  }
+
+  function updateRecSelCount() {
+    const checked = document.querySelectorAll('.rec-checkbox:checked').length;
+    document.getElementById('rec-sel-count').textContent =
+      `${checked} clip${checked !== 1 ? 's' : ''} selected`;
+  }
+
+  function setClipState(clipId, status, message = '') {
+    clipStates[clipId] = { status, message };
+    const card = document.querySelector(`.rec-clip-card[data-clip-id="${clipId}"]`);
+    if (!card) return;
+    const badge = card.querySelector('.clip-status');
+    if (badge) {
+      badge.className   = `clip-status clip-status-${status}`;
+      badge.textContent = status;
+      badge.title       = message;
+    }
+    const isBusy = status !== 'queued' && status !== 'done' && status !== 'error';
+    card.querySelectorAll('button, .rec-checkbox').forEach(el => { el.disabled = isBusy; });
+  }
+
+  // ── Clip pipeline actions ──────────────────────────────────────────────────
+  async function prepareClip(clipId) {
+    if (!currentDem) { setRecLog('No demo loaded.', 'error'); return; }
+    const clip = clips.find(c => c.clip_id === clipId);
+    if (!clip) return;
+    setClipState(clipId, 'preparing', 'Launching game...');
+    setRecLog(`Preparing clip ${clipId}…`);
+    try {
+      const res  = await fetch('/api/record/prepare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dem_path:   currentDem,
+          start_tick: clip.start_tick,
+          steam_exe:  document.getElementById('steam-exe').value,
+          launch_wait: Number(document.getElementById('launch-wait').value),
+          seek_settle: Number(document.getElementById('seek-settle').value),
+        }),
+      });
+      const data = await res.json();
+      if (data.status === 'started') {
+        pollJob(data.job_id, clipId);
+      } else {
+        setClipState(clipId, 'error', data.message);
+        setRecLog(`Error: ${data.message}`, 'error');
+      }
+    } catch (err) {
+      setClipState(clipId, 'error', err.message);
+      setRecLog(`Unexpected error: ${err.message}`, 'error');
+    }
+  }
+
+  async function recordClip(clipId) {
+    if (!currentDem) { setRecLog('No demo loaded.', 'error'); return null; }
+    const clip = clips.find(c => c.clip_id === clipId);
+    if (!clip) return null;
+    setClipState(clipId, 'preparing', 'Starting pipeline...');
+    setRecLog(`Recording clip ${clipId}…`);
+    try {
+      const res  = await fetch('/api/record/clip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dem_path:   currentDem,
+          clip,
+          steam_exe:  document.getElementById('steam-exe').value,
+          launch_wait: Number(document.getElementById('launch-wait').value),
+          seek_settle: Number(document.getElementById('seek-settle').value),
+        }),
+      });
+      const data = await res.json();
+      if (data.status === 'started') {
+        pollJob(data.job_id, clipId);
+        return data.job_id;
+      }
+      setClipState(clipId, 'error', data.message);
+      setRecLog(`Error: ${data.message}`, 'error');
+      return null;
+    } catch (err) {
+      setClipState(clipId, 'error', err.message);
+      setRecLog(`Unexpected error: ${err.message}`, 'error');
+      return null;
+    }
+  }
+
+  function pollJob(jobId, clipId) {
+    const timer = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/record/job/${jobId}`);
+        if (res.status === 404) { clearInterval(timer); return; }
+        const job = await res.json();
+        setClipState(clipId, job.status, job.message || '');
+        if (job.message) setRecLog(`Clip ${clipId}: ${job.message}`);
+        if (job.status === 'done') {
+          clearInterval(timer);
+          setRecLog(job.output_path ? `Clip ${clipId} saved: ${job.output_path}` : `Clip ${clipId} done.`, 'ok');
+          pollObsStatus();
+        } else if (job.status === 'error') {
+          clearInterval(timer);
+          setRecLog(`Clip ${clipId} failed: ${job.message}`, 'error');
+          pollObsStatus();
+        }
+      } catch { /* network glitch, keep polling */ }
+    }, 2000);
+  }
+
+  function waitForJob(jobId) {
+    return new Promise(resolve => {
+      const timer = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/record/job/${jobId}`);
+          if (res.status === 404) { clearInterval(timer); resolve({ status: 'error' }); return; }
+          const job = await res.json();
+          if (job.status === 'done' || job.status === 'error') {
+            clearInterval(timer);
+            resolve(job);
+          }
+        } catch { /* keep waiting */ }
+      }, 2000);
+    });
+  }
+
+  document.getElementById('record-selected-btn').addEventListener('click', async () => {
+    const selected = [...document.querySelectorAll('.rec-checkbox:checked')].map(cb => cb.dataset.id);
+    if (!selected.length) return;
+    document.getElementById('record-selected-btn').disabled = true;
+    for (const clipId of selected) {
+      const jobId = await recordClip(clipId);
+      if (jobId) await waitForJob(jobId);
+    }
+    document.getElementById('record-selected-btn').disabled = false;
+    setRecLog('Batch recording complete.', 'ok');
   });
 
   // ── Init ───────────────────────────────────────────────────────────────────
