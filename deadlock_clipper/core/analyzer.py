@@ -183,6 +183,42 @@ def find_kill_streaks(
     return clip_zones
 
 
+def _merge_close_clips(
+    zones: list[dict],
+    tick_rate: int,
+    gap_seconds: float = 15.0,
+) -> list[dict]:
+    """Merge consecutive same-player zones whose kill ticks are within gap_seconds of each other.
+
+    The merged zone keeps the first zone's start_tick (lead already applied) and the
+    last zone's end_tick (buffer already applied), so lead/buffer are never doubled.
+    """
+    if not zones:
+        return zones
+
+    gap_ticks = gap_seconds * tick_rate
+    merged: list[dict] = []
+    current = {**zones[0], "kill_ticks": list(zones[0]["kill_ticks"])}
+
+    for nxt in zones[1:]:
+        same_player = current.get("player_name") == nxt.get("player_name")
+        close_enough = nxt["kill_ticks"][0] - current["kill_ticks"][-1] <= gap_ticks
+        if same_player and close_enough:
+            current["end_tick"] = nxt["end_tick"]
+            current["kill_ticks"].extend(nxt["kill_ticks"])
+            current["kill_count"] = len(current["kill_ticks"])
+            count = current["kill_count"]
+            current["reason"] = f"{count}x Kill" if count > 1 else "Kill"
+            parts = [d for d in (current.get("detail", ""), nxt.get("detail", "")) if d]
+            current["detail"] = ", ".join(parts)
+        else:
+            merged.append(current)
+            current = {**nxt, "kill_ticks": list(nxt["kill_ticks"])}
+
+    merged.append(current)
+    return merged
+
+
 def find_objective_destructions(
     objectives_destroyed: list[dict],
     objective_types: list[str],
@@ -257,6 +293,7 @@ def analyze(parsed_data: dict, config: dict) -> list[dict]:
                 zones = find_single_kills(kills, hero_id, lead_ticks, buffer_ticks)
             else:
                 zones = _detect_for_all_players(find_single_kills, kills, players, lead_ticks, buffer_ticks)
+            zones = _merge_close_clips(zones, tick_rate)
 
         elif event_type == "kill_streak":
             streak_threshold: int = int(cfg.get("kill_streak_threshold", 3))

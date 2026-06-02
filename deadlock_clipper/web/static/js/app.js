@@ -575,7 +575,7 @@ function pollJob(jobId, clipId) {
         pollObsStatus();
       }
     } catch { /* network glitch, keep polling */ }
-  }, 2000);
+  }, 5000);
 }
 
 function waitForJob(jobId) {
@@ -590,7 +590,7 @@ function waitForJob(jobId) {
           resolve(job);
         }
       } catch { /* keep waiting */ }
-    }, 2000);
+    }, 5000);
   });
 }
 
@@ -625,6 +625,14 @@ document.getElementById('record-selected-btn').addEventListener('click', async (
     const jobId = await recordClip(clipId);
     if (jobId) await waitForJob(jobId);
   }
+  setRecLog('All clips recorded — exiting game...');
+  try {
+    const res = await fetch('/api/record/teardown', { method: 'POST' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.job_id) await waitForJob(data.job_id);
+    }
+  } catch { /* non-fatal */ }
   document.getElementById('prepare-selected-btn').disabled = false;
   document.getElementById('record-selected-btn').disabled  = false;
   setRecLog('Batch recording complete.', 'ok');

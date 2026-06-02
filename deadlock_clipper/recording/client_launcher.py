@@ -221,7 +221,7 @@ def hide_hud() -> None:
 def goto_tick(
     tick: int,
     seek_settle_seconds: float = 2.0,
-    pause_wait_seconds: float = 6.0,
+    pause_wait_seconds: float = 3.0,
 ) -> None:
     """Jump the replay to a specific tick, pause to let it load, then resume.
 
@@ -243,6 +243,23 @@ def goto_tick(
     send_console_command("demo_resume")
     logger.info("Resumed, waiting %.1fs before recording...", seek_settle_seconds)
     time.sleep(seek_settle_seconds)
+
+
+def teardown_game(disconnect_settle: float = 3.0) -> None:
+    """Exit the current demo and then quit the game client entirely.
+
+    Intentionally two separate commands:
+      - 'disconnect' leaves the demo but keeps the game process alive.
+        In a future multi-game queue, the next demo can be loaded here
+        via console (playdemo …) without needing a full game restart.
+      - 'quit' fully exits the game after the settle delay, used only
+        when there are no more demos left in the queue.
+    """
+    send_console_command("disconnect")
+    logger.info("Sent 'disconnect', waiting %.0fs before quitting...", disconnect_settle)
+    time.sleep(disconnect_settle)
+    send_console_command("quit")
+    logger.info("Sent 'quit' — game client exiting.")
 
 
 def prepare_replay(start_tick: int, seek_settle_seconds: float = 2.0, player_name: str = "") -> None:

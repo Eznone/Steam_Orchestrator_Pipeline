@@ -5,6 +5,7 @@ import time
 from flask import Blueprint, jsonify, request
 
 from deadlock_clipper.config import load_config
+from deadlock_clipper.recording.client_launcher import teardown_game
 from deadlock_clipper.recording.pipeline import launch_and_prepare, prepare_only
 from deadlock_clipper.recording.obs_controller import OBSConnectionError, OBSController
 from deadlock_clipper.web import state
@@ -224,6 +225,23 @@ def record_clip():
 
     threading.Thread(target=_run, daemon=True).start()
     return jsonify({"status": "started", "job_id": job_id, "clip_id": clip_id})
+
+
+@bp.route("/api/record/teardown", methods=["POST"])
+def record_teardown():
+    job_id, job = state.jobs.create()
+
+    def _run():
+        with state.recording_lock:
+            try:
+                teardown_game()
+                state.active_dem = None
+                state.jobs.update(job, "done", "Game exited")
+            except Exception as exc:
+                state.jobs.update(job, "error", str(exc))
+
+    threading.Thread(target=_run, daemon=True).start()
+    return jsonify({"status": "started", "job_id": job_id})
 
 
 @bp.route("/api/record/job/<job_id>")
