@@ -23,6 +23,7 @@ _DEFAULT_STEAM_EXE = r"C:\Program Files (x86)\Steam\steam.exe"
 pyautogui = None
 try:
     import pyautogui
+
     pyautogui.FAILSAFE = True  # move mouse to top-left corner to abort
     _GUI_AVAILABLE = True
 except Exception:
@@ -37,6 +38,7 @@ def _require_gui() -> None:
 
 
 # ── Launch ───────────────────────────────────────────────────────────────────
+
 
 def launch_demo(
     dem_path: str | Path,
@@ -76,6 +78,7 @@ def wait_for_launch(wait_seconds: float = 30.0) -> None:
 
 
 # ── Console automation ───────────────────────────────────────────────────────
+
 
 def send_console_command(
     command: str,
@@ -117,7 +120,9 @@ def goto_tick(tick: int, seek_settle_seconds: float = 2.0) -> None:
         seek_settle_seconds: Extra wait after the seek command before recording.
     """
     send_console_command(f"demo_goto {tick}")
-    logger.info("Sought to tick %d, waiting %.1fs to settle...", tick, seek_settle_seconds)
+    logger.info(
+        "Sought to tick %d, waiting %.1fs to settle...", tick, seek_settle_seconds
+    )
     time.sleep(seek_settle_seconds)
 
 
@@ -128,5 +133,3 @@ def prepare_replay(start_tick: int, seek_settle_seconds: float = 2.0) -> None:
     """
     hide_hud()
     goto_tick(start_tick, seek_settle_seconds)
-
-
