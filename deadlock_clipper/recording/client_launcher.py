@@ -125,17 +125,33 @@ def hide_hud() -> None:
     logger.info("HUD hidden.")
 
 
-def goto_tick(tick: int, seek_settle_seconds: float = 2.0) -> None:
+def goto_tick(
+    tick: int,
+    seek_settle_seconds: float = 2.0,
+    retries: int = 6,
+    retry_interval: float = 4.0,
+) -> None:
     """Jump the replay to a specific tick and wait for it to settle.
+
+    Retries several times so the command lands after the demo finishes loading.
+    The game silently ignores demo_goto if the demo isn't ready yet.
 
     Args:
         tick: The demo server tick to seek to.
-        seek_settle_seconds: Extra wait after the seek command before recording.
+        seek_settle_seconds: Extra wait after the final seek command.
+        retries: How many times to send the command.
+        retry_interval: Seconds between each attempt.
     """
-    send_console_command(f"demo_goto {tick}")
-    logger.info(
-        "Sought to tick %d, waiting %.1fs to settle...", tick, seek_settle_seconds
-    )
+    cmd = f"demo_goto {tick}"
+    for attempt in range(retries):
+        send_console_command(cmd)
+        if attempt < retries - 1:
+            logger.info(
+                "demo_goto attempt %d/%d — waiting %.0fs for demo to be ready...",
+                attempt + 1, retries, retry_interval,
+            )
+            time.sleep(retry_interval)
+    logger.info("demo_goto done, waiting %.1fs to settle...", seek_settle_seconds)
     time.sleep(seek_settle_seconds)
 
 
