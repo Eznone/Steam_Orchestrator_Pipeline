@@ -55,7 +55,7 @@ def launch_demo(
         steam_exe: Path to steam.exe. Tried first; falls back to the Steam URI.
     """
     stem = Path(dem_path).stem
-    cmd = [steam_exe, "-applaunch", DEADLOCK_APP_ID, "-console", f"+playdemo {stem}"]
+    cmd = [steam_exe, "-applaunch", DEADLOCK_APP_ID, "-console", "+playdemo", stem]
 
     try:
         subprocess.Popen(cmd)
