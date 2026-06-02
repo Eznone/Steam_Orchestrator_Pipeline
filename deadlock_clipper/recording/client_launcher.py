@@ -4,6 +4,7 @@ Runtime requirement: Windows Python. PyAutoGUI cannot control Windows applicatio
 from WSL2. Run this module (and the full pipeline) with Windows-native Python.
 """
 
+import ctypes
 import logging
 import os
 import shutil
@@ -31,11 +32,66 @@ except Exception:
     _GUI_AVAILABLE = False
 
 
+GAME_WINDOW_TITLE = "Deadlock"
+
+
 def _require_gui() -> None:
     if not _GUI_AVAILABLE:
         raise RuntimeError(
             "pyautogui is unavailable. client_launcher must run on Windows Python."
         )
+
+
+def _find_window_hwnd(title_substring: str) -> int | None:
+    """Return the HWND of the first top-level window whose title contains title_substring."""
+    if sys.platform != "win32":
+        return None
+
+    found: list[int] = []
+    EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_size_t, ctypes.c_size_t)
+
+    def _callback(hwnd: int, _lparam: int) -> bool:
+        length = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
+        if length > 0:
+            buf = ctypes.create_unicode_buffer(length + 1)
+            ctypes.windll.user32.GetWindowTextW(hwnd, buf, length + 1)
+            if title_substring.lower() in buf.value.lower():
+                found.append(hwnd)
+        return True
+
+    ctypes.windll.user32.EnumWindows(EnumWindowsProc(_callback), 0)
+    return found[0] if found else None
+
+
+def focus_game_window(title_substring: str = GAME_WINDOW_TITLE, settle: float = 0.3) -> None:
+    """Bring the game window to the foreground before sending any input.
+
+    Uses AttachThreadInput so SetForegroundWindow succeeds even when Windows
+    focus-theft protection would normally block it — no synthetic key events needed.
+    """
+    if sys.platform != "win32":
+        return
+
+    hwnd = _find_window_hwnd(title_substring)
+    if hwnd is None:
+        logger.warning("focus_game_window: no window found containing '%s'", title_substring)
+        return
+
+    if ctypes.windll.user32.GetForegroundWindow() == hwnd:
+        return  # already focused
+
+    fg_hwnd = ctypes.windll.user32.GetForegroundWindow()
+    fg_tid = ctypes.windll.user32.GetWindowThreadProcessId(fg_hwnd, None)
+    my_tid = ctypes.windll.kernel32.GetCurrentThreadId()
+
+    ctypes.windll.user32.AttachThreadInput(my_tid, fg_tid, True)
+    ctypes.windll.user32.ShowWindow(hwnd, 9)   # SW_RESTORE — un-minimise if needed
+    ctypes.windll.user32.BringWindowToTop(hwnd)
+    ctypes.windll.user32.SetForegroundWindow(hwnd)
+    ctypes.windll.user32.AttachThreadInput(my_tid, fg_tid, False)
+
+    time.sleep(settle)
+    logger.debug("Focused game window: %s", title_substring)
 
 
 # ── Launch ───────────────────────────────────────────────────────────────────
@@ -97,6 +153,7 @@ def dismiss_enter_screen(settle_seconds: float = 5.0) -> None:
         settle_seconds: How long to wait after pressing Enter for the replay to finish loading.
     """
     _require_gui()
+    focus_game_window()
     logger.info("Dismissing enter screen...")
     pyautogui.press("enter")
     logger.info("Waiting %.0fs for replay to load...", settle_seconds)
@@ -123,6 +180,7 @@ def send_console_command(
         post_delay: Seconds to wait after Enter before closing the console.
     """
     _require_gui()
+    focus_game_window()
     logger.debug("Sending console command: %s", command)
     pyautogui.press("f7")
     time.sleep(open_delay)
@@ -163,15 +221,27 @@ def hide_hud() -> None:
 def goto_tick(
     tick: int,
     seek_settle_seconds: float = 2.0,
+    pause_wait_seconds: float = 6.0,
 ) -> None:
-    """Jump the replay to a specific tick and wait for it to settle.
+    """Jump the replay to a specific tick, pause to let it load, then resume.
+
+    Sequence: demo_gototick → demo_pause → wait pause_wait_seconds →
+    demo_resume → wait seek_settle_seconds.
+
+    The pause gives the engine time to actually reach the target tick before
+    playback and recording begin, ensuring the clip starts at the right moment.
 
     Args:
         tick: The demo server tick to seek to.
-        seek_settle_seconds: Extra wait after the command for the seek to settle.
+        seek_settle_seconds: Wait after demo_resume before returning.
+        pause_wait_seconds: Wait between demo_pause and demo_resume.
     """
     send_console_command(f"demo_gototick {tick}")
-    logger.info("demo_gototick %d sent, waiting %.1fs to settle...", tick, seek_settle_seconds)
+    send_console_command("demo_pause")
+    logger.info("demo_gototick %d — paused, waiting %.1fs for seek to settle...", tick, pause_wait_seconds)
+    time.sleep(pause_wait_seconds)
+    send_console_command("demo_resume")
+    logger.info("Resumed, waiting %.1fs before recording...", seek_settle_seconds)
     time.sleep(seek_settle_seconds)
 
 

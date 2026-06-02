@@ -5,7 +5,7 @@ import time
 from flask import Blueprint, jsonify, request
 
 from deadlock_clipper.config import load_config
-from deadlock_clipper.recording.pipeline import launch_and_prepare
+from deadlock_clipper.recording.pipeline import launch_and_prepare, prepare_only
 from deadlock_clipper.recording.obs_controller import OBSConnectionError, OBSController
 from deadlock_clipper.web import state
 
@@ -77,6 +77,7 @@ def obs_disconnect():
         if state.obs_controller is not None:
             state.obs_controller.disconnect()
             state.obs_controller = None
+    state.active_dem = None
     return jsonify({"status": "ok"})
 
 
@@ -130,15 +131,25 @@ def record_prepare():
 
     def _run():
         try:
-            launch_and_prepare(
-                dem_path, start_tick, steam_exe, launch_wait, seek_settle,
-                on_status=lambda s, m: state.jobs.update(job, s, m),
-                enter_screen_settle=enter_screen_settle,
-                replays_dir=replays_dir or None,
-                player_name=player_name,
-            )
+            if state.active_dem == dem_path:
+                prepare_only(
+                    dem_path, start_tick, seek_settle,
+                    on_status=lambda s, m: state.jobs.update(job, s, m),
+                    player_name=player_name,
+                )
+            else:
+                state.active_dem = None
+                launch_and_prepare(
+                    dem_path, start_tick, steam_exe, launch_wait, seek_settle,
+                    on_status=lambda s, m: state.jobs.update(job, s, m),
+                    enter_screen_settle=enter_screen_settle,
+                    replays_dir=replays_dir or None,
+                    player_name=player_name,
+                )
+                state.active_dem = dem_path
             state.jobs.update(job, "done", "Ready at tick")
         except Exception as exc:
+            state.active_dem = None
             state.jobs.update(job, "error", str(exc))
 
     threading.Thread(target=_run, daemon=True).start()
@@ -171,13 +182,22 @@ def record_clip():
 
     def _run():
         try:
-            launch_and_prepare(
-                dem_path, start_tick, steam_exe, launch_wait, seek_settle,
-                on_status=lambda s, m: state.jobs.update(job, s, m),
-                enter_screen_settle=enter_screen_settle,
-                replays_dir=replays_dir or None,
-                player_name=player_name,
-            )
+            if state.active_dem == dem_path:
+                prepare_only(
+                    dem_path, start_tick, seek_settle,
+                    on_status=lambda s, m: state.jobs.update(job, s, m),
+                    player_name=player_name,
+                )
+            else:
+                state.active_dem = None
+                launch_and_prepare(
+                    dem_path, start_tick, steam_exe, launch_wait, seek_settle,
+                    on_status=lambda s, m: state.jobs.update(job, s, m),
+                    enter_screen_settle=enter_screen_settle,
+                    replays_dir=replays_dir or None,
+                    player_name=player_name,
+                )
+                state.active_dem = dem_path
             with state.obs_lock:
                 if state.obs_controller is None:
                     raise RuntimeError("OBS not connected")
@@ -190,6 +210,7 @@ def record_clip():
                 output_path = state.obs_controller.stop_recording()
             state.jobs.update(job, "done", "Saved", output_path)
         except Exception as exc:
+            state.active_dem = None
             state.jobs.update(job, "error", str(exc))
 
     threading.Thread(target=_run, daemon=True).start()

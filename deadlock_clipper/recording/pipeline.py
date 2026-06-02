@@ -10,6 +10,22 @@ from deadlock_clipper.recording.client_launcher import (
 )
 
 
+def prepare_only(
+    dem_path: str,
+    start_tick: int,
+    seek_settle: float,
+    on_status: Callable[[str, str], None],
+    player_name: str = "",
+) -> None:
+    """Seek an already-running game to start_tick without relaunching.
+
+    Call this for every clip after the first when the game is already open
+    with the correct demo loaded.
+    """
+    on_status("preparing", "Seeking to tick...")
+    prepare_replay(start_tick, seek_settle, player_name=player_name)
+
+
 def launch_and_prepare(
     dem_path: str,
     start_tick: int,

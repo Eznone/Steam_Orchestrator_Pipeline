@@ -55,3 +55,8 @@ jobs = JobStore()
 # OBS controller — None when not connected (lock shared with background threads)
 obs_controller: "OBSController | None" = None
 obs_lock = threading.Lock()
+
+# Path of the .dem currently loaded in the running game client.
+# None means the game is not running or the demo is unknown.
+# Set after a successful launch_and_prepare; cleared on error or disconnect.
+active_dem: str | None = None
