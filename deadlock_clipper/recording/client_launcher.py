@@ -6,6 +6,7 @@ from WSL2. Run this module (and the full pipeline) with Windows-native Python.
 
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -43,26 +44,38 @@ def _require_gui() -> None:
 def launch_demo(
     dem_path: str | Path,
     steam_exe: str = _DEFAULT_STEAM_EXE,
+    replays_dir: str | Path | None = None,
 ) -> None:
     """Launch Deadlock with the given demo file via Steam.
 
-    The .dem file must reside in Deadlock's replays directory. Only the stem
-    (filename without extension) is passed to +playdemo; the game resolves the
-    full path internally.
+    +playdemo only searches Deadlock's replays directory. If replays_dir is
+    provided and the .dem is not already there, it is copied in before launch.
 
     Args:
-        dem_path: Path to the .dem file (used to extract the stem).
+        dem_path: Path to the .dem file.
         steam_exe: Path to steam.exe. Tried first; falls back to the Steam URI.
+        replays_dir: Deadlock's replays directory (watcher.hotfolder). When
+            provided, the .dem is copied here if it isn't already present.
     """
-    stem = Path(dem_path).stem
-    cmd = [steam_exe, "-applaunch", DEADLOCK_APP_ID, "-console", "+playdemo", stem]
+    dem_path = Path(dem_path)
+
+    if replays_dir is not None:
+        replays_dir = Path(replays_dir)
+        target = replays_dir / dem_path.name
+        if not target.exists():
+            logger.info("Copying %s → %s for +playdemo", dem_path.name, replays_dir)
+            shutil.copy2(dem_path, target)
+
+    demo_arg = f"replays/{dem_path.name}"
+    cmd = [steam_exe, "-applaunch", DEADLOCK_APP_ID, "-console", "+playdemo", demo_arg]
 
     try:
+        logger.info("Running: %s", " ".join(cmd))
         subprocess.Popen(cmd)
-        logger.info("Launched Deadlock via Steam.exe: +playdemo %s", stem)
+        logger.info("Launched Deadlock via Steam.exe: +playdemo %s", demo_arg)
     except FileNotFoundError:
-        # Steam not at the expected path — fall back to URI protocol
-        uri = f"steam://run/{DEADLOCK_APP_ID}//-console +playdemo {stem}"
+        # steam://rungameid/<id>//<args> — double-slash signals game launch args
+        uri = f"steam://rungameid/{DEADLOCK_APP_ID}//+playdemo {demo_arg}"
         logger.warning("steam.exe not found at %s, falling back to URI.", steam_exe)
         if sys.platform == "win32":
             os.startfile(uri)
@@ -119,6 +132,22 @@ def send_console_command(
     pyautogui.press("f7")
 
 
+def load_demo_via_console(filename: str, load_wait: float = 8.0) -> None:
+    """Open the console and type 'playdemo replays/<filename>' to load the replay.
+
+    More reliable than the +playdemo Steam launch argument, which Deadlock
+    silently ignores if it launches to the main menu.
+
+    Args:
+        filename: Demo filename with extension (e.g. '83083467.dem').
+        load_wait: Seconds to wait after the command for the demo to load.
+    """
+    demo_arg = f"replays/{filename}"
+    send_console_command(f"playdemo {demo_arg}")
+    logger.info("Sent 'playdemo %s' via console, waiting %.0fs to load...", demo_arg, load_wait)
+    time.sleep(load_wait)
+
+
 def hide_hud() -> None:
     """Send the console command to hide the replay timeline and HUD controls."""
     send_console_command("citadel_hide_replay_hud true")
@@ -128,30 +157,15 @@ def hide_hud() -> None:
 def goto_tick(
     tick: int,
     seek_settle_seconds: float = 2.0,
-    retries: int = 6,
-    retry_interval: float = 4.0,
 ) -> None:
     """Jump the replay to a specific tick and wait for it to settle.
 
-    Retries several times so the command lands after the demo finishes loading.
-    The game silently ignores demo_goto if the demo isn't ready yet.
-
     Args:
         tick: The demo server tick to seek to.
-        seek_settle_seconds: Extra wait after the final seek command.
-        retries: How many times to send the command.
-        retry_interval: Seconds between each attempt.
+        seek_settle_seconds: Extra wait after the command for the seek to settle.
     """
-    cmd = f"demo_goto {tick}"
-    for attempt in range(retries):
-        send_console_command(cmd)
-        if attempt < retries - 1:
-            logger.info(
-                "demo_goto attempt %d/%d — waiting %.0fs for demo to be ready...",
-                attempt + 1, retries, retry_interval,
-            )
-            time.sleep(retry_interval)
-    logger.info("demo_goto done, waiting %.1fs to settle...", seek_settle_seconds)
+    send_console_command(f"demo_gototick {tick}")
+    logger.info("demo_gototick %d sent, waiting %.1fs to settle...", tick, seek_settle_seconds)
     time.sleep(seek_settle_seconds)
 
 

@@ -23,5 +23,11 @@ dev = [
 [project.scripts]
 deadlock-clipper = "deadlock_clipper.cli:main"
 
+[tool.uv]
+package = true
+
+[tool.setuptools.packages.find]
+include = ["deadlock_clipper*"]
+
 [tool.pytest.ini_options]
 pythonpath = ["."]

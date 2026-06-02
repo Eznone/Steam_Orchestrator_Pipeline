@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"c:\\\\Users\\\\Eznone\\\\Vs_Code_Projects\\\\Steam_Orchestrator_Pipeline\\\\tests\")"
+    ]
+  }
+}

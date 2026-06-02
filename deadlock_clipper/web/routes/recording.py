@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 def _recording_defaults() -> dict:
     rec = _CONFIG.get("recording", {})
+    watcher = _CONFIG.get("watcher", {})
     return {
         "host":                rec.get("obs_host", "localhost"),
         "port":                int(rec.get("obs_port", 4455)),
@@ -25,6 +26,7 @@ def _recording_defaults() -> dict:
         "launch_wait_seconds":       float(rec.get("launch_wait_seconds", 30)),
         "enter_screen_settle_seconds": float(rec.get("enter_screen_settle_seconds", 5)),
         "seek_settle_seconds":       float(rec.get("seek_settle_seconds", 2)),
+        "replays_dir":               watcher.get("hotfolder", ""),
     }
 
 
@@ -117,6 +119,7 @@ def record_prepare():
     enter_screen_settle = float(body.get("enter_screen_settle", defaults["enter_screen_settle_seconds"]))
     seek_settle = float(body.get("seek_settle", defaults["seek_settle_seconds"]))
     steam_exe = body.get("steam_exe", defaults["steam_exe"])
+    replays_dir = body.get("replays_dir", defaults["replays_dir"])
 
     if not dem_path:
         return jsonify({"status": "error", "message": "dem_path is required"}), 400
@@ -129,6 +132,7 @@ def record_prepare():
                 dem_path, start_tick, steam_exe, launch_wait, seek_settle,
                 on_status=lambda s, m: state.jobs.update(job, s, m),
                 enter_screen_settle=enter_screen_settle,
+                replays_dir=replays_dir or None,
             )
             state.jobs.update(job, "done", "Ready at tick")
         except Exception as exc:
@@ -148,6 +152,7 @@ def record_clip():
     enter_screen_settle = float(body.get("enter_screen_settle", defaults["enter_screen_settle_seconds"]))
     seek_settle = float(body.get("seek_settle", defaults["seek_settle_seconds"]))
     steam_exe = body.get("steam_exe", defaults["steam_exe"])
+    replays_dir = body.get("replays_dir", defaults["replays_dir"])
 
     if not dem_path or not clip:
         return jsonify({"status": "error", "message": "dem_path and clip are required"}), 400
@@ -166,6 +171,7 @@ def record_clip():
                 dem_path, start_tick, steam_exe, launch_wait, seek_settle,
                 on_status=lambda s, m: state.jobs.update(job, s, m),
                 enter_screen_settle=enter_screen_settle,
+                replays_dir=replays_dir or None,
             )
             with state.obs_lock:
                 if state.obs_controller is None:
