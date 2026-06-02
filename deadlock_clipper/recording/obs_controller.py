@@ -64,8 +64,8 @@ class OBSController:
         if self._client is not None:
             try:
                 self._client.disconnect()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Error during OBS disconnect: %s", exc)
             self._client = None
             logger.info("Disconnected from OBS.")
 
@@ -111,7 +111,7 @@ class OBSController:
 if __name__ == "__main__":
     import sys
     import logging
-    from config import load_config
+    from deadlock_clipper.config import load_config
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 

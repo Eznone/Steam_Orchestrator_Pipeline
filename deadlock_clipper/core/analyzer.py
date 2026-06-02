@@ -3,6 +3,8 @@ import logging
 import sys
 from pathlib import Path
 
+from deadlock_clipper.config import load_config
+
 logger = logging.getLogger(__name__)
 
 _KILL_LABELS = {
@@ -22,9 +24,6 @@ _OBJECTIVE_LABELS = {
     "patron": "Patron Killed",
     "mid_boss": "Mid Boss Killed",
 }
-
-
-from config import load_config
 
 
 def find_player_hero_id(players: list[dict], steam_id: str | int) -> int | None:
@@ -281,7 +280,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
     if len(sys.argv) < 2:
-        print("Usage: python analyzer.py <path/to/parsed.json>")
+        print("Usage: python -m deadlock_clipper.core.analyzer <path/to/parsed.json>")
         sys.exit(1)
 
     config = load_config()

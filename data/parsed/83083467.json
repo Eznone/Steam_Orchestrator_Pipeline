@@ -1,0 +1,1185 @@
+{
+  "match_id": 83083467,
+  "map_name": "start",
+  "total_ticks": 179606,
+  "tick_rate": 64,
+  "total_clock_time": "46:46",
+  "winning_team_num": 2,
+  "players": [
+    {
+      "steam_id": 76561198275966539,
+      "player_name": "Vincent Van Coco | The General",
+      "hero_id": 69,
+      "hero_name": "The Doorman",
+      "team_num": 2
+    },
+    {
+      "steam_id": 76561198451791195,
+      "player_name": "Good Guy Mr D",
+      "hero_id": 16,
+      "hero_name": "Calico",
+      "team_num": 3
+    },
+    {
+      "steam_id": 76561198303790565,
+      "player_name": "Daddy Krug",
+      "hero_id": 66,
+      "hero_name": "Victor",
+      "team_num": 2
+    },
+    {
+      "steam_id": 76561198224790344,
+      "player_name": "Eznone",
+      "hero_id": 2,
+      "hero_name": "Seven",
+      "team_num": 2
+    },
+    {
+      "steam_id": 76561198277197775,
+      "player_name": "Vetreyco",
+      "hero_id": 11,
+      "hero_name": "Dynamo",
+      "team_num": 2
+    },
+    {
+      "steam_id": 76561199162327753,
+      "player_name": "J4CKOFSP4DES",
+      "hero_id": 7,
+      "hero_name": "Wraith",
+      "team_num": 3
+    },
+    {
+      "steam_id": 76561199835290172,
+      "player_name": "GWYN",
+      "hero_id": 12,
+      "hero_name": "Kelvin",
+      "team_num": 3
+    },
+    {
+      "steam_id": 76561198028203643,
+      "player_name": "Nyarzyae",
+      "hero_id": 18,
+      "hero_name": "Mo and Krill",
+      "team_num": 3
+    },
+    {
+      "steam_id": 76561198259145497,
+      "player_name": "Subway Tuna",
+      "hero_id": 81,
+      "hero_name": "Celeste",
+      "team_num": 2
+    },
+    {
+      "steam_id": 76561198354519839,
+      "player_name": "Forte",
+      "hero_id": 64,
+      "hero_name": "Drifter",
+      "team_num": 2
+    },
+    {
+      "steam_id": 76561198001107673,
+      "player_name": "Ridkuu",
+      "hero_id": 1,
+      "hero_name": "Infernus",
+      "team_num": 3
+    },
+    {
+      "steam_id": 76561198334014934,
+      "player_name": "NoksiousRS",
+      "hero_id": 63,
+      "hero_name": "Mina",
+      "team_num": 3
+    }
+  ],
+  "kills": [
+    {
+      "tick": 7782,
+      "attacker_hero_id": 81,
+      "attacker_hero_name": "Celeste",
+      "victim_hero_id": 12,
+      "victim_hero_name": "Kelvin",
+      "assister_hero_ids": [
+        11
+      ]
+    },
+    {
+      "tick": 8034,
+      "attacker_hero_id": 11,
+      "attacker_hero_name": "Dynamo",
+      "victim_hero_id": 63,
+      "victim_hero_name": "Mina",
+      "assister_hero_ids": [
+        81
+      ]
+    },
+    {
+      "tick": 11537,
+      "attacker_hero_id": 16,
+      "attacker_hero_name": "Calico",
+      "victim_hero_id": 64,
+      "victim_hero_name": "Drifter",
+      "assister_hero_ids": [
+        1
+      ]
+    },
+    {
+      "tick": 12333,
+      "attacker_hero_id": 81,
+      "attacker_hero_name": "Celeste",
+      "victim_hero_id": 63,
+      "victim_hero_name": "Mina",
+      "assister_hero_ids": [
+        11
+      ]
+    },
+    {
+      "tick": 12484,
+      "attacker_hero_id": 11,
+      "attacker_hero_name": "Dynamo",
+      "victim_hero_id": 12,
+      "victim_hero_name": "Kelvin",
+      "assister_hero_ids": [
+        81
+      ]
+    },
+    {
+      "tick": 16360,
+      "attacker_hero_id": 0,
+      "attacker_hero_name": "Base",
+      "victim_hero_id": 64,
+      "victim_hero_name": "Drifter",
+      "assister_hero_ids": [
+        1
+      ]
+    },
+    {
+      "tick": 16804,
+      "attacker_hero_id": 66,
+      "attacker_hero_name": "Victor",
+      "victim_hero_id": 16,
+      "victim_hero_name": "Calico",
+      "assister_hero_ids": []
+    },
+    {
+      "tick": 19106,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 7,
+      "victim_hero_name": "Wraith",
+      "assister_hero_ids": [
+        69
+      ]
+    },
+    {
+      "tick": 19183,
+      "attacker_hero_id": 64,
+      "attacker_hero_name": "Drifter",
+      "victim_hero_id": 1,
+      "victim_hero_name": "Infernus",
+      "assister_hero_ids": [
+        66
+      ]
+    },
+    {
+      "tick": 20129,
+      "attacker_hero_id": 64,
+      "attacker_hero_name": "Drifter",
+      "victim_hero_id": 16,
+      "victim_hero_name": "Calico",
+      "assister_hero_ids": [
+        66
+      ]
+    },
+    {
+      "tick": 20598,
+      "attacker_hero_id": 81,
+      "attacker_hero_name": "Celeste",
+      "victim_hero_id": 63,
+      "victim_hero_name": "Mina",
+      "assister_hero_ids": [
+        11
+      ]
+    },
+    {
+      "tick": 21862,
+      "attacker_hero_id": 11,
+      "attacker_hero_name": "Dynamo",
+      "victim_hero_id": 12,
+      "victim_hero_name": "Kelvin",
+      "assister_hero_ids": [
+        81
+      ]
+    },
+    {
+      "tick": 25795,
+      "attacker_hero_id": 1,
+      "attacker_hero_name": "Infernus",
+      "victim_hero_id": 66,
+      "victim_hero_name": "Victor",
+      "assister_hero_ids": [
+        16
+      ]
+    },
+    {
+      "tick": 26587,
+      "attacker_hero_id": 16,
+      "attacker_hero_name": "Calico",
+      "victim_hero_id": 64,
+      "victim_hero_name": "Drifter",
+      "assister_hero_ids": [
+        1
+      ]
+    },
+    {
+      "tick": 30290,
+      "attacker_hero_id": 16,
+      "attacker_hero_name": "Calico",
+      "victim_hero_id": 64,
+      "victim_hero_name": "Drifter",
+      "assister_hero_ids": [
+        1
+      ]
+    },
+    {
+      "tick": 32116,
+      "attacker_hero_id": 63,
+      "attacker_hero_name": "Mina",
+      "victim_hero_id": 81,
+      "victim_hero_name": "Celeste",
+      "assister_hero_ids": [
+        12
+      ]
+    },
+    {
+      "tick": 35308,
+      "attacker_hero_id": 16,
+      "attacker_hero_name": "Calico",
+      "victim_hero_id": 64,
+      "victim_hero_name": "Drifter",
+      "assister_hero_ids": [
+        1
+      ]
+    },
+    {
+      "tick": 36659,
+      "attacker_hero_id": 66,
+      "attacker_hero_name": "Victor",
+      "victim_hero_id": 16,
+      "victim_hero_name": "Calico",
+      "assister_hero_ids": []
+    },
+    {
+      "tick": 37057,
+      "attacker_hero_id": 7,
+      "attacker_hero_name": "Wraith",
+      "victim_hero_id": 69,
+      "victim_hero_name": "The Doorman",
+      "assister_hero_ids": [
+        18
+      ]
+    },
+    {
+      "tick": 40290,
+      "attacker_hero_id": 12,
+      "attacker_hero_name": "Kelvin",
+      "victim_hero_id": 64,
+      "victim_hero_name": "Drifter",
+      "assister_hero_ids": [
+        63
+      ]
+    },
+    {
+      "tick": 41768,
+      "attacker_hero_id": 11,
+      "attacker_hero_name": "Dynamo",
+      "victim_hero_id": 1,
+      "victim_hero_name": "Infernus",
+      "assister_hero_ids": [
+        81,
+        66
+      ]
+    },
+    {
+      "tick": 41985,
+      "attacker_hero_id": 11,
+      "attacker_hero_name": "Dynamo",
+      "victim_hero_id": 63,
+      "victim_hero_name": "Mina",
+      "assister_hero_ids": [
+        81,
+        66,
+        64
+      ]
+    },
+    {
+      "tick": 44302,
+      "attacker_hero_id": 12,
+      "attacker_hero_name": "Kelvin",
+      "victim_hero_id": 64,
+      "victim_hero_name": "Drifter",
+      "assister_hero_ids": [
+        1,
+        63
+      ]
+    },
+    {
+      "tick": 44631,
+      "attacker_hero_id": 63,
+      "attacker_hero_name": "Mina",
+      "victim_hero_id": 11,
+      "victim_hero_name": "Dynamo",
+      "assister_hero_ids": [
+        1,
+        12
+      ]
+    },
+    {
+      "tick": 46249,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 7,
+      "victim_hero_name": "Wraith",
+      "assister_hero_ids": [
+        69
+      ]
+    },
+    {
+      "tick": 47301,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 18,
+      "victim_hero_name": "Mo and Krill",
+      "assister_hero_ids": [
+        69
+      ]
+    },
+    {
+      "tick": 48613,
+      "attacker_hero_id": 11,
+      "attacker_hero_name": "Dynamo",
+      "victim_hero_id": 16,
+      "victim_hero_name": "Calico",
+      "assister_hero_ids": [
+        81
+      ]
+    },
+    {
+      "tick": 54111,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 7,
+      "victim_hero_name": "Wraith",
+      "assister_hero_ids": [
+        69
+      ]
+    },
+    {
+      "tick": 54404,
+      "attacker_hero_id": 64,
+      "attacker_hero_name": "Drifter",
+      "victim_hero_id": 18,
+      "victim_hero_name": "Mo and Krill",
+      "assister_hero_ids": [
+        11
+      ]
+    },
+    {
+      "tick": 60721,
+      "attacker_hero_id": 66,
+      "attacker_hero_name": "Victor",
+      "victim_hero_id": 7,
+      "victim_hero_name": "Wraith",
+      "assister_hero_ids": []
+    },
+    {
+      "tick": 61750,
+      "attacker_hero_id": 18,
+      "attacker_hero_name": "Mo and Krill",
+      "victim_hero_id": 2,
+      "victim_hero_name": "Seven",
+      "assister_hero_ids": [
+        12,
+        63
+      ]
+    },
+    {
+      "tick": 65042,
+      "attacker_hero_id": 63,
+      "attacker_hero_name": "Mina",
+      "victim_hero_id": 11,
+      "victim_hero_name": "Dynamo",
+      "assister_hero_ids": [
+        16
+      ]
+    },
+    {
+      "tick": 65817,
+      "attacker_hero_id": 66,
+      "attacker_hero_name": "Victor",
+      "victim_hero_id": 63,
+      "victim_hero_name": "Mina",
+      "assister_hero_ids": [
+        81,
+        64
+      ]
+    },
+    {
+      "tick": 67066,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 16,
+      "victim_hero_name": "Calico",
+      "assister_hero_ids": [
+        81,
+        66,
+        64
+      ]
+    },
+    {
+      "tick": 67869,
+      "attacker_hero_id": 18,
+      "attacker_hero_name": "Mo and Krill",
+      "victim_hero_id": 64,
+      "victim_hero_name": "Drifter",
+      "assister_hero_ids": [
+        7,
+        1,
+        12
+      ]
+    },
+    {
+      "tick": 67985,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 1,
+      "victim_hero_name": "Infernus",
+      "assister_hero_ids": [
+        81,
+        66,
+        64
+      ]
+    },
+    {
+      "tick": 68133,
+      "attacker_hero_id": 81,
+      "attacker_hero_name": "Celeste",
+      "victim_hero_id": 12,
+      "victim_hero_name": "Kelvin",
+      "assister_hero_ids": [
+        66,
+        2
+      ]
+    },
+    {
+      "tick": 68340,
+      "attacker_hero_id": 18,
+      "attacker_hero_name": "Mo and Krill",
+      "victim_hero_id": 81,
+      "victim_hero_name": "Celeste",
+      "assister_hero_ids": [
+        12,
+        63
+      ]
+    },
+    {
+      "tick": 72268,
+      "attacker_hero_id": 66,
+      "attacker_hero_name": "Victor",
+      "victim_hero_id": 12,
+      "victim_hero_name": "Kelvin",
+      "assister_hero_ids": [
+        2,
+        11
+      ]
+    },
+    {
+      "tick": 72580,
+      "attacker_hero_id": 11,
+      "attacker_hero_name": "Dynamo",
+      "victim_hero_id": 18,
+      "victim_hero_name": "Mo and Krill",
+      "assister_hero_ids": [
+        66,
+        2,
+        64
+      ]
+    },
+    {
+      "tick": 74397,
+      "attacker_hero_id": 64,
+      "attacker_hero_name": "Drifter",
+      "victim_hero_id": 7,
+      "victim_hero_name": "Wraith",
+      "assister_hero_ids": [
+        66,
+        11
+      ]
+    },
+    {
+      "tick": 75842,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 16,
+      "victim_hero_name": "Calico",
+      "assister_hero_ids": [
+        69
+      ]
+    },
+    {
+      "tick": 76305,
+      "attacker_hero_id": 81,
+      "attacker_hero_name": "Celeste",
+      "victim_hero_id": 63,
+      "victim_hero_name": "Mina",
+      "assister_hero_ids": [
+        66
+      ]
+    },
+    {
+      "tick": 76918,
+      "attacker_hero_id": 11,
+      "attacker_hero_name": "Dynamo",
+      "victim_hero_id": 18,
+      "victim_hero_name": "Mo and Krill",
+      "assister_hero_ids": [
+        64
+      ]
+    },
+    {
+      "tick": 77239,
+      "attacker_hero_id": 64,
+      "attacker_hero_name": "Drifter",
+      "victim_hero_id": 12,
+      "victim_hero_name": "Kelvin",
+      "assister_hero_ids": [
+        11
+      ]
+    },
+    {
+      "tick": 77968,
+      "attacker_hero_id": 1,
+      "attacker_hero_name": "Infernus",
+      "victim_hero_id": 81,
+      "victim_hero_name": "Celeste",
+      "assister_hero_ids": []
+    },
+    {
+      "tick": 83638,
+      "attacker_hero_id": 63,
+      "attacker_hero_name": "Mina",
+      "victim_hero_id": 66,
+      "victim_hero_name": "Victor",
+      "assister_hero_ids": [
+        16,
+        7,
+        18
+      ]
+    },
+    {
+      "tick": 83968,
+      "attacker_hero_id": 64,
+      "attacker_hero_name": "Drifter",
+      "victim_hero_id": 12,
+      "victim_hero_name": "Kelvin",
+      "assister_hero_ids": [
+        11
+      ]
+    },
+    {
+      "tick": 87269,
+      "attacker_hero_id": 7,
+      "attacker_hero_name": "Wraith",
+      "victim_hero_id": 2,
+      "victim_hero_name": "Seven",
+      "assister_hero_ids": [
+        16,
+        63
+      ]
+    },
+    {
+      "tick": 87857,
+      "attacker_hero_id": 7,
+      "attacker_hero_name": "Wraith",
+      "victim_hero_id": 69,
+      "victim_hero_name": "The Doorman",
+      "assister_hero_ids": []
+    },
+    {
+      "tick": 88430,
+      "attacker_hero_id": 7,
+      "attacker_hero_name": "Wraith",
+      "victim_hero_id": 64,
+      "victim_hero_name": "Drifter",
+      "assister_hero_ids": [
+        16,
+        1,
+        12,
+        63,
+        18
+      ]
+    },
+    {
+      "tick": 90899,
+      "attacker_hero_id": 11,
+      "attacker_hero_name": "Dynamo",
+      "victim_hero_id": 12,
+      "victim_hero_name": "Kelvin",
+      "assister_hero_ids": [
+        81,
+        2
+      ]
+    },
+    {
+      "tick": 92180,
+      "attacker_hero_id": 66,
+      "attacker_hero_name": "Victor",
+      "victim_hero_id": 63,
+      "victim_hero_name": "Mina",
+      "assister_hero_ids": []
+    },
+    {
+      "tick": 92574,
+      "attacker_hero_id": 64,
+      "attacker_hero_name": "Drifter",
+      "victim_hero_id": 18,
+      "victim_hero_name": "Mo and Krill",
+      "assister_hero_ids": [
+        2,
+        11
+      ]
+    },
+    {
+      "tick": 93397,
+      "attacker_hero_id": 7,
+      "attacker_hero_name": "Wraith",
+      "victim_hero_id": 66,
+      "victim_hero_name": "Victor",
+      "assister_hero_ids": [
+        16,
+        1
+      ]
+    },
+    {
+      "tick": 94363,
+      "attacker_hero_id": 16,
+      "attacker_hero_name": "Calico",
+      "victim_hero_id": 11,
+      "victim_hero_name": "Dynamo",
+      "assister_hero_ids": [
+        1,
+        12
+      ]
+    },
+    {
+      "tick": 97161,
+      "attacker_hero_id": 12,
+      "attacker_hero_name": "Kelvin",
+      "victim_hero_id": 64,
+      "victim_hero_name": "Drifter",
+      "assister_hero_ids": [
+        1,
+        18
+      ]
+    },
+    {
+      "tick": 97736,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 7,
+      "victim_hero_name": "Wraith",
+      "assister_hero_ids": [
+        69
+      ]
+    },
+    {
+      "tick": 99470,
+      "attacker_hero_id": 18,
+      "attacker_hero_name": "Mo and Krill",
+      "victim_hero_id": 81,
+      "victim_hero_name": "Celeste",
+      "assister_hero_ids": [
+        16,
+        12
+      ]
+    },
+    {
+      "tick": 99719,
+      "attacker_hero_id": 69,
+      "attacker_hero_name": "The Doorman",
+      "victim_hero_id": 63,
+      "victim_hero_name": "Mina",
+      "assister_hero_ids": [
+        66,
+        2
+      ]
+    },
+    {
+      "tick": 100621,
+      "attacker_hero_id": 18,
+      "attacker_hero_name": "Mo and Krill",
+      "victim_hero_id": 11,
+      "victim_hero_name": "Dynamo",
+      "assister_hero_ids": [
+        12
+      ]
+    },
+    {
+      "tick": 105513,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 63,
+      "victim_hero_name": "Mina",
+      "assister_hero_ids": [
+        69,
+        64
+      ]
+    },
+    {
+      "tick": 107484,
+      "attacker_hero_id": 1,
+      "attacker_hero_name": "Infernus",
+      "victim_hero_id": 81,
+      "victim_hero_name": "Celeste",
+      "assister_hero_ids": []
+    },
+    {
+      "tick": 108449,
+      "attacker_hero_id": 16,
+      "attacker_hero_name": "Calico",
+      "victim_hero_id": 66,
+      "victim_hero_name": "Victor",
+      "assister_hero_ids": [
+        7,
+        12
+      ]
+    },
+    {
+      "tick": 112590,
+      "attacker_hero_id": 64,
+      "attacker_hero_name": "Drifter",
+      "victim_hero_id": 1,
+      "victim_hero_name": "Infernus",
+      "assister_hero_ids": [
+        81
+      ]
+    },
+    {
+      "tick": 112852,
+      "attacker_hero_id": 1,
+      "attacker_hero_name": "Infernus",
+      "victim_hero_id": 64,
+      "victim_hero_name": "Drifter",
+      "assister_hero_ids": [
+        16,
+        12,
+        18
+      ]
+    },
+    {
+      "tick": 122064,
+      "attacker_hero_id": 63,
+      "attacker_hero_name": "Mina",
+      "victim_hero_id": 11,
+      "victim_hero_name": "Dynamo",
+      "assister_hero_ids": [
+        16,
+        1,
+        12,
+        18
+      ]
+    },
+    {
+      "tick": 122394,
+      "attacker_hero_id": 16,
+      "attacker_hero_name": "Calico",
+      "victim_hero_id": 64,
+      "victim_hero_name": "Drifter",
+      "assister_hero_ids": [
+        1,
+        12,
+        63,
+        18
+      ]
+    },
+    {
+      "tick": 123597,
+      "attacker_hero_id": 63,
+      "attacker_hero_name": "Mina",
+      "victim_hero_id": 81,
+      "victim_hero_name": "Celeste",
+      "assister_hero_ids": [
+        16,
+        12,
+        18
+      ]
+    },
+    {
+      "tick": 128714,
+      "attacker_hero_id": 7,
+      "attacker_hero_name": "Wraith",
+      "victim_hero_id": 66,
+      "victim_hero_name": "Victor",
+      "assister_hero_ids": [
+        16,
+        1,
+        12,
+        63,
+        18
+      ]
+    },
+    {
+      "tick": 130004,
+      "attacker_hero_id": 16,
+      "attacker_hero_name": "Calico",
+      "victim_hero_id": 11,
+      "victim_hero_name": "Dynamo",
+      "assister_hero_ids": [
+        7,
+        1,
+        12,
+        63
+      ]
+    },
+    {
+      "tick": 131811,
+      "attacker_hero_id": 16,
+      "attacker_hero_name": "Calico",
+      "victim_hero_id": 64,
+      "victim_hero_name": "Drifter",
+      "assister_hero_ids": [
+        7,
+        1
+      ]
+    },
+    {
+      "tick": 132895,
+      "attacker_hero_id": 63,
+      "attacker_hero_name": "Mina",
+      "victim_hero_id": 81,
+      "victim_hero_name": "Celeste",
+      "assister_hero_ids": [
+        7,
+        1,
+        12
+      ]
+    },
+    {
+      "tick": 133274,
+      "attacker_hero_id": 1,
+      "attacker_hero_name": "Infernus",
+      "victim_hero_id": 69,
+      "victim_hero_name": "The Doorman",
+      "assister_hero_ids": [
+        16,
+        7,
+        63,
+        18
+      ]
+    },
+    {
+      "tick": 133421,
+      "attacker_hero_id": 12,
+      "attacker_hero_name": "Kelvin",
+      "victim_hero_id": 2,
+      "victim_hero_name": "Seven",
+      "assister_hero_ids": []
+    },
+    {
+      "tick": 138126,
+      "attacker_hero_id": 1,
+      "attacker_hero_name": "Infernus",
+      "victim_hero_id": 66,
+      "victim_hero_name": "Victor",
+      "assister_hero_ids": [
+        63,
+        18
+      ]
+    },
+    {
+      "tick": 138897,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 1,
+      "victim_hero_name": "Infernus",
+      "assister_hero_ids": [
+        81,
+        69,
+        11,
+        64
+      ]
+    },
+    {
+      "tick": 140293,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 18,
+      "victim_hero_name": "Mo and Krill",
+      "assister_hero_ids": [
+        81,
+        69,
+        64
+      ]
+    },
+    {
+      "tick": 140684,
+      "attacker_hero_id": 64,
+      "attacker_hero_name": "Drifter",
+      "victim_hero_id": 7,
+      "victim_hero_name": "Wraith",
+      "assister_hero_ids": [
+        81,
+        69
+      ]
+    },
+    {
+      "tick": 143877,
+      "attacker_hero_id": 12,
+      "attacker_hero_name": "Kelvin",
+      "victim_hero_id": 81,
+      "victim_hero_name": "Celeste",
+      "assister_hero_ids": [
+        16
+      ]
+    },
+    {
+      "tick": 144376,
+      "attacker_hero_id": 16,
+      "attacker_hero_name": "Calico",
+      "victim_hero_id": 11,
+      "victim_hero_name": "Dynamo",
+      "assister_hero_ids": [
+        12
+      ]
+    },
+    {
+      "tick": 148140,
+      "attacker_hero_id": 16,
+      "attacker_hero_name": "Calico",
+      "victim_hero_id": 2,
+      "victim_hero_name": "Seven",
+      "assister_hero_ids": [
+        12
+      ]
+    },
+    {
+      "tick": 148615,
+      "attacker_hero_id": 1,
+      "attacker_hero_name": "Infernus",
+      "victim_hero_id": 64,
+      "victim_hero_name": "Drifter",
+      "assister_hero_ids": [
+        7
+      ]
+    },
+    {
+      "tick": 150281,
+      "attacker_hero_id": 16,
+      "attacker_hero_name": "Calico",
+      "victim_hero_id": 81,
+      "victim_hero_name": "Celeste",
+      "assister_hero_ids": [
+        7,
+        1,
+        18
+      ]
+    },
+    {
+      "tick": 150576,
+      "attacker_hero_id": 16,
+      "attacker_hero_name": "Calico",
+      "victim_hero_id": 69,
+      "victim_hero_name": "The Doorman",
+      "assister_hero_ids": [
+        7,
+        1,
+        18
+      ]
+    },
+    {
+      "tick": 152649,
+      "attacker_hero_id": 18,
+      "attacker_hero_name": "Mo and Krill",
+      "victim_hero_id": 66,
+      "victim_hero_name": "Victor",
+      "assister_hero_ids": [
+        7,
+        1,
+        12,
+        63
+      ]
+    },
+    {
+      "tick": 153901,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 63,
+      "victim_hero_name": "Mina",
+      "assister_hero_ids": []
+    },
+    {
+      "tick": 154999,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 18,
+      "victim_hero_name": "Mo and Krill",
+      "assister_hero_ids": [
+        81,
+        64
+      ]
+    },
+    {
+      "tick": 155863,
+      "attacker_hero_id": 64,
+      "attacker_hero_name": "Drifter",
+      "victim_hero_id": 7,
+      "victim_hero_name": "Wraith",
+      "assister_hero_ids": []
+    },
+    {
+      "tick": 155944,
+      "attacker_hero_id": 69,
+      "attacker_hero_name": "The Doorman",
+      "victim_hero_id": 16,
+      "victim_hero_name": "Calico",
+      "assister_hero_ids": [
+        81,
+        2,
+        11,
+        64
+      ]
+    },
+    {
+      "tick": 165112,
+      "attacker_hero_id": 16,
+      "attacker_hero_name": "Calico",
+      "victim_hero_id": 11,
+      "victim_hero_name": "Dynamo",
+      "assister_hero_ids": [
+        1,
+        12,
+        63
+      ]
+    },
+    {
+      "tick": 167740,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 63,
+      "victim_hero_name": "Mina",
+      "assister_hero_ids": [
+        81,
+        69,
+        64
+      ]
+    },
+    {
+      "tick": 167801,
+      "attacker_hero_id": 64,
+      "attacker_hero_name": "Drifter",
+      "victim_hero_id": 1,
+      "victim_hero_name": "Infernus",
+      "assister_hero_ids": [
+        81,
+        2,
+        69
+      ]
+    },
+    {
+      "tick": 167979,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 18,
+      "victim_hero_name": "Mo and Krill",
+      "assister_hero_ids": [
+        81,
+        64
+      ]
+    },
+    {
+      "tick": 168161,
+      "attacker_hero_id": 66,
+      "attacker_hero_name": "Victor",
+      "victim_hero_id": 7,
+      "victim_hero_name": "Wraith",
+      "assister_hero_ids": []
+    },
+    {
+      "tick": 169233,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 16,
+      "victim_hero_name": "Calico",
+      "assister_hero_ids": [
+        81,
+        69,
+        64
+      ]
+    },
+    {
+      "tick": 172341,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 12,
+      "victim_hero_name": "Kelvin",
+      "assister_hero_ids": [
+        11
+      ]
+    },
+    {
+      "tick": 176161,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 1,
+      "victim_hero_name": "Infernus",
+      "assister_hero_ids": [
+        81,
+        66,
+        69,
+        11,
+        64
+      ]
+    },
+    {
+      "tick": 176321,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 63,
+      "victim_hero_name": "Mina",
+      "assister_hero_ids": [
+        81,
+        66,
+        69,
+        11,
+        64
+      ]
+    },
+    {
+      "tick": 176578,
+      "attacker_hero_id": 64,
+      "attacker_hero_name": "Drifter",
+      "victim_hero_id": 7,
+      "victim_hero_name": "Wraith",
+      "assister_hero_ids": [
+        81,
+        66,
+        2,
+        69,
+        11
+      ]
+    },
+    {
+      "tick": 176625,
+      "attacker_hero_id": 2,
+      "attacker_hero_name": "Seven",
+      "victim_hero_id": 16,
+      "victim_hero_name": "Calico",
+      "assister_hero_ids": [
+        81,
+        66,
+        69,
+        11,
+        64
+      ]
+    }
+  ]
+}

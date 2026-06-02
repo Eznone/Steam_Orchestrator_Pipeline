@@ -1045,8 +1045,11 @@
   document.getElementById('rec-start-btn').addEventListener('click', async () => {
     const res  = await fetch('/api/record/start', { method: 'POST' });
     const data = await res.json();
-    if (data.status === 'ok') { setRecLog('Recording started.', 'ok'); pollObsStatus(); }
-    else { setRecLog(`Error: ${data.message}`, 'error'); }
+    if (data.status === 'ok') {
+      setRecLog('Recording started.', 'ok');
+      updateObsBadge(true, true);   // optimistic — OBS may lag on is_recording()
+      pollObsStatus();
+    } else { setRecLog(`Error: ${data.message}`, 'error'); }
   });
 
   document.getElementById('rec-stop-btn').addEventListener('click', async () => {
@@ -1054,6 +1057,7 @@
     const data = await res.json();
     if (data.status === 'ok') {
       setRecLog(data.output_path ? `Saved: ${data.output_path}` : 'Recording stopped.', 'ok');
+      updateObsBadge(true, false);  // optimistic
       pollObsStatus();
     } else { setRecLog(`Error: ${data.message}`, 'error'); }
   });

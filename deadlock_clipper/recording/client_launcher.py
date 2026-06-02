@@ -133,11 +133,11 @@ def prepare_replay(start_tick: int, seek_settle_seconds: float = 2.0) -> None:
 # ── Standalone test ──────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    from config import load_config
+    from deadlock_clipper.config import load_config
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
     if len(sys.argv) < 2:
-        print("Usage: python client_launcher.py <path/to/match.dem>")
+        print("Usage: python -m deadlock_clipper.recording.client_launcher <path/to/match.dem>")
         sys.exit(1)
 
     config = load_config()

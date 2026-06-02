@@ -5,7 +5,7 @@ from pathlib import Path
 
 from boon import Demo, DemoHeaderError, InvalidDemoError, hero_names
 
-from config import load_config
+from deadlock_clipper.config import load_config
 
 logger = logging.getLogger(__name__)
 
@@ -111,12 +111,12 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
     if len(sys.argv) < 2:
-        print("Usage: python parser_wrapper.py <path/to/match.dem>")
+        print("Usage: python -m deadlock_clipper.core.parser <path/to/match.dem>")
         sys.exit(1)
 
     config = load_config()
     dem = Path(sys.argv[1])
-    out = Path(config.get("parser", {}).get("output_dir", "parsed")) / f"{dem.stem}.json"
+    out = Path(config.get("parser", {}).get("output_dir", "data/parsed")) / f"{dem.stem}.json"
 
     result = parse_demo(dem, out)
     print(

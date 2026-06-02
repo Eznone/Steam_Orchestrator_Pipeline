@@ -1,10 +1,10 @@
 watcher:
   # Path to your Deadlock replays folder (Windows path, update USERNAME)
   hotfolder: 'C:\Program Files (x86)\Steam\steamapps\common\Deadlock\game\citadel\replays'
-  processing_dir: "./processing"
+  processing_dir: "./data/processing"
 
 parser:
-  output_dir: "./parsed"
+  output_dir: "./data/parsed"
 
 analyzer:
   # Your Steam ID64 — leave blank to analyze all players
@@ -39,4 +39,4 @@ recording:
   seek_settle_seconds: 2
 
 clips:
-  output_dir: "./completed_clips"
+  output_dir: "./data/clips"
