@@ -7,23 +7,25 @@ from deadlock_clipper.config import load_config
 
 logger = logging.getLogger(__name__)
 
-_KILL_LABELS = {
-    2: "Double Kill",
-    3: "Triple Kill",
-    4: "Quad Kill",
-    5: "Penta Kill",
-}
+_gc = load_config().get("game_constants", {})
+_KILL_LABELS: dict[int, str]      = {int(k): v for k, v in _gc.get("kill_labels", {}).items()}
+_TEAM_NAMES: dict[int, str]       = {int(k): v for k, v in _gc.get("team_names", {}).items()}
+_LANE_NAMES: dict[int, str]       = {int(k): v for k, v in _gc.get("lane_names", {}).items()}
+_OBJECTIVE_LABELS: dict[str, str] = _gc.get("objective_labels", {})
 
-_TEAM_NAMES = {2: "Amber Hand", 3: "Sapphire Flame"}
-_LANE_NAMES = {1: "Yellow", 4: "Blue", 6: "Purple"}
 
-_OBJECTIVE_LABELS = {
-    "walker": "Walker Destroyed",
-    "barracks": "Barracks Destroyed",
-    "shrine": "Shrine Destroyed",
-    "patron": "Patron Killed",
-    "mid_boss": "Mid Boss Killed",
-}
+def _detect_for_all_players(
+    fn,
+    kills: list[dict],
+    players: list[dict],
+    *args,
+) -> list[dict]:
+    """Run a clip-zone detector for every player and return merged, sorted results."""
+    result = []
+    for p in players:
+        result.extend(fn(kills, p["hero_id"], *args))
+    result.sort(key=lambda z: z["start_tick"])
+    return result
 
 
 def find_player_hero_id(players: list[dict], steam_id: str | int) -> int | None:
@@ -242,25 +244,18 @@ def analyze(parsed_data: dict, config: dict) -> list[dict]:
                 return []
             logger.info("Analyzing %s for hero_id=%d (steam_id=%s)", event_type, hero_id, steam_id)
 
-        def _for_all_players(fn, *args):
-            result = []
-            for p in players:
-                result.extend(fn(kills, p["hero_id"], *args))
-            result.sort(key=lambda z: z["start_tick"])
-            return result
-
         if event_type == "single_kill":
             if hero_id is not None:
                 zones = find_single_kills(kills, hero_id, lead_ticks, buffer_ticks)
             else:
-                zones = _for_all_players(find_single_kills, lead_ticks, buffer_ticks)
+                zones = _detect_for_all_players(find_single_kills, kills, players, lead_ticks, buffer_ticks)
 
         elif event_type == "kill_streak":
             streak_threshold: int = int(cfg.get("kill_streak_threshold", 3))
             if hero_id is not None:
                 zones = find_kill_streaks(kills, hero_id, streak_threshold, lead_ticks, buffer_ticks)
             else:
-                zones = _for_all_players(find_kill_streaks, streak_threshold, lead_ticks, buffer_ticks)
+                zones = _detect_for_all_players(find_kill_streaks, kills, players, streak_threshold, lead_ticks, buffer_ticks)
 
         else:  # multikill (default)
             window_seconds: float = float(cfg.get("multikill_window_seconds", 10))
@@ -269,7 +264,7 @@ def analyze(parsed_data: dict, config: dict) -> list[dict]:
             if hero_id is not None:
                 zones = find_multikills(kills, hero_id, window_ticks, threshold, lead_ticks, buffer_ticks)
             else:
-                zones = _for_all_players(find_multikills, window_ticks, threshold, lead_ticks, buffer_ticks)
+                zones = _detect_for_all_players(find_multikills, kills, players, window_ticks, threshold, lead_ticks, buffer_ticks)
 
     result = [{"clip_id": f"{i:02d}", **zone} for i, zone in enumerate(zones, start=1)]
     logger.info("Found %d clip zone(s) [event_type=%s] in match %s.", len(result), event_type, parsed_data.get("match_id"))

@@ -2,6 +2,8 @@ watcher:
   # Path to your Deadlock replays folder (Windows path, update USERNAME)
   hotfolder: 'C:\Program Files (x86)\Steam\steamapps\common\Deadlock\game\citadel\replays'
   processing_dir: "./data/processing"
+  # Local .dem files surfaced in the UI file picker (development only)
+  dev_replay_dir: "./tests/fixtures"
 
 parser:
   output_dir: "./data/parsed"
@@ -40,3 +42,23 @@ recording:
 
 clips:
   output_dir: "./data/clips"
+
+game_constants:
+  kill_labels:
+    2: "Double Kill"
+    3: "Triple Kill"
+    4: "Quad Kill"
+    5: "Penta Kill"
+  team_names:
+    2: "Amber Hand"
+    3: "Sapphire Flame"
+  lane_names:
+    1: "Yellow"
+    4: "Blue"
+    6: "Purple"
+  objective_labels:
+    walker: "Walker Destroyed"
+    barracks: "Barracks Destroyed"
+    shrine: "Shrine Destroyed"
+    patron: "Patron Killed"
+    mid_boss: "Mid Boss Killed"

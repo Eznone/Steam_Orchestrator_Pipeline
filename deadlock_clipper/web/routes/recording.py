@@ -5,7 +5,7 @@ import time
 from flask import Blueprint, jsonify, request
 
 from deadlock_clipper.config import load_config
-from deadlock_clipper.recording.client_launcher import launch_demo, prepare_replay, wait_for_launch
+from deadlock_clipper.recording.pipeline import launch_and_prepare
 from deadlock_clipper.recording.obs_controller import OBSConnectionError, OBSController
 from deadlock_clipper.web import state
 
@@ -15,8 +15,16 @@ _CONFIG = load_config()
 logger = logging.getLogger(__name__)
 
 
-def _recording_cfg() -> dict:
-    return _CONFIG.get("recording", {})
+def _recording_defaults() -> dict:
+    rec = _CONFIG.get("recording", {})
+    return {
+        "host":                rec.get("obs_host", "localhost"),
+        "port":                int(rec.get("obs_port", 4455)),
+        "password":            rec.get("obs_password", ""),
+        "steam_exe":           rec.get("steam_exe", ""),
+        "launch_wait_seconds": float(rec.get("launch_wait_seconds", 30)),
+        "seek_settle_seconds": float(rec.get("seek_settle_seconds", 2)),
+    }
 
 
 # ── OBS connection management ────────────────────────────────────────────────
@@ -24,15 +32,7 @@ def _recording_cfg() -> dict:
 
 @bp.route("/api/obs/status")
 def obs_status():
-    rec_cfg = _recording_cfg()
-    defaults = {
-        "host": rec_cfg.get("obs_host", "localhost"),
-        "port": int(rec_cfg.get("obs_port", 4455)),
-        "password": rec_cfg.get("obs_password", ""),
-        "steam_exe": rec_cfg.get("steam_exe", ""),
-        "launch_wait_seconds": float(rec_cfg.get("launch_wait_seconds", 30)),
-        "seek_settle_seconds": float(rec_cfg.get("seek_settle_seconds", 2)),
-    }
+    defaults = _recording_defaults()
     with state.obs_lock:
         if state.obs_controller is None:
             return jsonify({"connected": False, "recording": False, "config_defaults": defaults})
@@ -111,10 +111,10 @@ def record_prepare():
     body = request.get_json(silent=True) or {}
     dem_path = body.get("dem_path", "").strip()
     start_tick = int(body.get("start_tick", 0))
-    rec_cfg = _recording_cfg()
-    launch_wait = float(body.get("launch_wait", rec_cfg.get("launch_wait_seconds", 30)))
-    seek_settle = float(body.get("seek_settle", rec_cfg.get("seek_settle_seconds", 2)))
-    steam_exe = body.get("steam_exe", rec_cfg.get("steam_exe", ""))
+    defaults = _recording_defaults()
+    launch_wait = float(body.get("launch_wait", defaults["launch_wait_seconds"]))
+    seek_settle = float(body.get("seek_settle", defaults["seek_settle_seconds"]))
+    steam_exe = body.get("steam_exe", defaults["steam_exe"])
 
     if not dem_path:
         return jsonify({"status": "error", "message": "dem_path is required"}), 400
@@ -123,11 +123,10 @@ def record_prepare():
 
     def _run():
         try:
-            state.set_job(job, "preparing", "Launching game...")
-            launch_demo(dem_path, steam_exe)
-            wait_for_launch(launch_wait)
-            state.set_job(job, "preparing", "Seeking to tick...")
-            prepare_replay(start_tick, seek_settle)
+            launch_and_prepare(
+                dem_path, start_tick, steam_exe, launch_wait, seek_settle,
+                on_status=lambda s, m: state.set_job(job, s, m),
+            )
             state.set_job(job, "done", "Ready at tick")
         except Exception as exc:
             state.set_job(job, "error", str(exc))
@@ -141,10 +140,10 @@ def record_clip():
     body = request.get_json(silent=True) or {}
     dem_path = body.get("dem_path", "").strip()
     clip = body.get("clip", {})
-    rec_cfg = _recording_cfg()
-    launch_wait = float(body.get("launch_wait", rec_cfg.get("launch_wait_seconds", 30)))
-    seek_settle = float(body.get("seek_settle", rec_cfg.get("seek_settle_seconds", 2)))
-    steam_exe = body.get("steam_exe", rec_cfg.get("steam_exe", ""))
+    defaults = _recording_defaults()
+    launch_wait = float(body.get("launch_wait", defaults["launch_wait_seconds"]))
+    seek_settle = float(body.get("seek_settle", defaults["seek_settle_seconds"]))
+    steam_exe = body.get("steam_exe", defaults["steam_exe"])
 
     if not dem_path or not clip:
         return jsonify({"status": "error", "message": "dem_path and clip are required"}), 400
@@ -159,11 +158,10 @@ def record_clip():
 
     def _run():
         try:
-            state.set_job(job, "preparing", "Launching game...")
-            launch_demo(dem_path, steam_exe)
-            wait_for_launch(launch_wait)
-            state.set_job(job, "preparing", "Seeking to tick...")
-            prepare_replay(start_tick, seek_settle)
+            launch_and_prepare(
+                dem_path, start_tick, steam_exe, launch_wait, seek_settle,
+                on_status=lambda s, m: state.set_job(job, s, m),
+            )
             with state.obs_lock:
                 if state.obs_controller is None:
                     raise RuntimeError("OBS not connected")

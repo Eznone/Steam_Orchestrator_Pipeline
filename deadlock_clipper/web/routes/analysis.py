@@ -21,13 +21,12 @@ def index():
 
 @bp.route("/api/files")
 def list_files():
-    """Return all .dem files found in tests/fixtures/ and the configured hotfolder."""
+    """Return all .dem files found in configured replay directories."""
     found: list[dict] = []
 
-    for directory in [
-        Path("tests/fixtures"),
-        Path(_CONFIG.get("watcher", {}).get("hotfolder", "")),
-    ]:
+    watcher_cfg = _CONFIG.get("watcher", {})
+    dirs = [watcher_cfg.get("dev_replay_dir", ""), watcher_cfg.get("hotfolder", "")]
+    for directory in [Path(d) for d in dirs if d]:
         if directory.exists():
             for f in sorted(directory.glob("*.dem")):
                 found.append({"path": str(f), "name": f.name})
