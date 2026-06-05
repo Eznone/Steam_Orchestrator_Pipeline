@@ -252,8 +252,21 @@ main {
   align-items: center;
 }
 .capture-bar.visible { display: flex; }
-.capture-bar .sel-count { font-size: 13px; color: var(--muted); flex: 1; }
+.capture-bar .sel-count { font-size: 13px; color: var(--muted); }
+.capture-bar .queue-count { font-size: 12px; color: var(--accent); flex: 1; }
 .capture-bar .btn { width: auto; }
+
+/* ── Multi-demo group headers ── */
+.dem-group-header {
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 
 /* ── Log ── */
 #log {

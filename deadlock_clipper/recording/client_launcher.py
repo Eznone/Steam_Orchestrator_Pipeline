@@ -245,20 +245,27 @@ def goto_tick(
     time.sleep(seek_settle_seconds)
 
 
-def teardown_game(disconnect_settle: float = 3.0) -> None:
+def disconnect_demo(settle: float = 2.0) -> None:
+    """Disconnect from the current demo without quitting the game client.
+
+    Use this between demos in a multi-demo queue so the game process stays
+    alive for the next playdemo call.
+    """
+    send_console_command("disconnect", open_delay=1.0)
+    logger.info("Sent 'disconnect', waiting %.0fs for demo to unload...", settle)
+    time.sleep(settle)
+
+
+def teardown_game(disconnect_settle: float = 3.0, pre_settle: float = 3.0) -> None:
     """Exit the current demo and then quit the game client entirely.
 
-    Intentionally two separate commands:
-      - 'disconnect' leaves the demo but keeps the game process alive.
-        In a future multi-game queue, the next demo can be loaded here
-        via console (playdemo …) without needing a full game restart.
-      - 'quit' fully exits the game after the settle delay, used only
-        when there are no more demos left in the queue.
+    Call this only after the last demo in the queue. For mid-queue demo
+    transitions, use disconnect_demo() + load_demo_via_console() instead.
     """
-    send_console_command("disconnect")
-    logger.info("Sent 'disconnect', waiting %.0fs before quitting...", disconnect_settle)
-    time.sleep(disconnect_settle)
-    send_console_command("quit")
+    # Wait for OBS to finish saving and release focus before we try to open the console.
+    time.sleep(pre_settle)
+    disconnect_demo(disconnect_settle)
+    send_console_command("quit", open_delay=1.0)
     logger.info("Sent 'quit' — game client exiting.")
 
 

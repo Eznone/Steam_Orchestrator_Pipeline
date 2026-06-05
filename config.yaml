@@ -41,7 +41,7 @@ recording:
   seek_settle_seconds: 2
 
 clips:
-  output_dir: "./data/clips"
+  output_dir: "C:/Users/Eznone/Videos"
 
 game_constants:
   kill_labels:

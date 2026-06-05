@@ -61,6 +61,10 @@ obs_lock = threading.Lock()
 # Set after a successful launch_and_prepare; cleared on error or disconnect.
 active_dem: str | None = None
 
+# True when the Deadlock game client process is running (regardless of which
+# demo is loaded). Used to decide between switch_and_prepare vs launch_and_prepare.
+game_running: bool = False
+
 # Ensures only one recording job (prepare or clip) runs at a time so that
 # game commands from a second job cannot fire while the first is recording.
 recording_lock = threading.Lock()

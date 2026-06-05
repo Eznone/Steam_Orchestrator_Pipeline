@@ -1,12 +1,14 @@
 import logging
+import re
 import threading
 import time
+from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 
 from deadlock_clipper.config import load_config
 from deadlock_clipper.recording.client_launcher import teardown_game
-from deadlock_clipper.recording.pipeline import launch_and_prepare, prepare_only
+from deadlock_clipper.recording.pipeline import launch_and_prepare, prepare_only, switch_and_prepare
 from deadlock_clipper.recording.obs_controller import OBSConnectionError, OBSController
 from deadlock_clipper.web import state
 
@@ -14,6 +16,15 @@ bp = Blueprint("recording", __name__)
 
 _CONFIG = load_config()
 logger = logging.getLogger(__name__)
+
+
+def _safe_filename(name: str) -> str:
+    return re.sub(r'[<>:"/\\|?*]', '', name).strip() or "clip"
+
+
+def _ticks_to_time_str(ticks: int, tick_rate: int) -> str:
+    total_sec = int(ticks) // int(tick_rate)
+    return f"{total_sec // 60}m{total_sec % 60:02d}s"
 
 
 def _recording_defaults() -> dict:
@@ -191,13 +202,25 @@ def record_clip():
 
     def _run():
         with state.recording_lock:
+            game_prepared = False
             try:
+                with state.obs_lock:
+                    if state.obs_controller is None:
+                        raise RuntimeError("OBS not connected — click 'Connect OBS' before recording")
                 if state.active_dem == dem_path:
                     prepare_only(
                         dem_path, start_tick, seek_settle,
                         on_status=lambda s, m: state.jobs.update(job, s, m),
                         player_name=player_name,
                     )
+                elif state.game_running:
+                    # Game is up but a different demo is loaded — switch via console.
+                    switch_and_prepare(
+                        dem_path, start_tick, seek_settle,
+                        on_status=lambda s, m: state.jobs.update(job, s, m),
+                        player_name=player_name,
+                    )
+                    state.active_dem = dem_path
                 else:
                     state.active_dem = None
                     launch_and_prepare(
@@ -208,19 +231,42 @@ def record_clip():
                         player_name=player_name,
                     )
                     state.active_dem = dem_path
+                    state.game_running = True
+                game_prepared = True
+                clips_dir = Path(_CONFIG.get("clips", {}).get("output_dir", "./data/clips"))
+                match_code = Path(dem_path).stem
+                target_dir = (clips_dir / "deadlock" / match_code).resolve()
+                target_dir.mkdir(parents=True, exist_ok=True)
                 with state.obs_lock:
                     if state.obs_controller is None:
-                        raise RuntimeError("OBS not connected")
+                        raise RuntimeError("OBS disconnected during game preparation")
                     state.jobs.update(job, "recording", "Recording...")
+                    try:
+                        state.obs_controller.set_record_directory(str(target_dir))
+                    except Exception as exc:
+                        logger.warning(
+                            "Could not set OBS record directory to '%s': %s "
+                            "— recording will go to OBS default output folder.",
+                            target_dir, exc,
+                        )
                     state.obs_controller.start_recording()
                 time.sleep(duration_s)
                 with state.obs_lock:
                     if state.obs_controller is None:
                         raise RuntimeError("OBS disconnected during recording")
                     output_path = state.obs_controller.stop_recording()
+                if output_path:
+                    p = Path(output_path)
+                    safe_player = _safe_filename(player_name)
+                    time_str = _ticks_to_time_str(start_tick, tick_rate)
+                    new_path = target_dir / f"{safe_player}_{time_str}.mp4"
+                    p.rename(new_path)
+                    output_path = str(new_path)
                 state.jobs.update(job, "done", "Saved", output_path)
             except Exception as exc:
-                state.active_dem = None
+                if not game_prepared:
+                    state.active_dem = None
+                    state.game_running = False
                 state.jobs.update(job, "error", str(exc))
 
     threading.Thread(target=_run, daemon=True).start()
@@ -236,6 +282,7 @@ def record_teardown():
             try:
                 teardown_game()
                 state.active_dem = None
+                state.game_running = False
                 state.jobs.update(job, "done", "Game exited")
             except Exception as exc:
                 state.jobs.update(job, "error", str(exc))

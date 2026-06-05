@@ -227,7 +227,9 @@
     <!-- Capture bar (sticky bottom) -->
     <div class="capture-bar" id="capture-bar">
       <span class="sel-count" id="sel-count">0 clips selected</span>
+      <span class="queue-count" id="queue-count" style="display:none"></span>
       <button class="btn btn-secondary" id="deselect-all-btn">Deselect All</button>
+      <button class="btn btn-secondary" id="add-to-queue-btn">+ Add to Queue</button>
       <button class="btn btn-green" id="capture-btn">▶ Go to Recording</button>
     </div>
 
@@ -253,6 +255,7 @@
       <div class="record-all-bar" id="record-all-bar" style="display:none">
         <button class="btn btn-secondary btn-sm" id="select-all-btn">Select All</button>
         <span style="flex:1; font-size:13px; color:var(--muted)" id="rec-sel-count">0 clips selected</span>
+        <button class="btn btn-secondary btn-sm" id="clear-queue-btn">✕ Clear Queue</button>
         <button class="btn btn-secondary btn-sm" id="prepare-selected-btn">⏩ Prepare Selected</button>
         <button class="btn btn-primary btn-sm" id="record-selected-btn">▶ Record Selected</button>
       </div>

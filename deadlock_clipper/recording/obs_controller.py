@@ -1,4 +1,5 @@
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -90,8 +91,11 @@ class OBSController:
     def start_recording(self) -> None:
         self._require_connected()
         if self.is_recording():
-            logger.warning("OBS is already recording — skipping start.")
-            return
+            # A leftover recording from a previous run (or manual OBS start) is
+            # still active. Stop it so this clip gets a clean, bounded recording.
+            logger.warning("OBS was already recording — stopping leftover recording before clip capture.")
+            self._client.stop_record()
+            time.sleep(0.5)
         self._client.start_record()
         logger.info("OBS recording started.")
 
@@ -105,6 +109,11 @@ class OBSController:
         path = getattr(resp, "output_path", None)
         logger.info("OBS recording stopped. Output: %s", path)
         return path
+
+    def set_record_directory(self, directory: str) -> None:
+        self._require_connected()
+        self._client.set_record_directory(recordDirectory=directory)
+        logger.info("OBS recording directory set to '%s'.", directory)
 
     def set_scene(self, scene_name: str) -> None:
         self._require_connected()
