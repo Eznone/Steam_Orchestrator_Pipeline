@@ -100,13 +100,38 @@ class OBSController:
         logger.info("OBS recording started.")
 
     def stop_recording(self) -> str | None:
-        """Stop recording and return the output file path, or None if not recording."""
+        """Stop recording and return the output file path, or None if not recording.
+
+        OBS < 30 does not include outputPath in the StopRecord response, so we
+        fall back to scanning the recording directory for the newest video file.
+        """
         self._require_connected()
         if not self.is_recording():
             logger.warning("OBS is not recording — nothing to stop.")
             return None
+
+        try:
+            dir_resp = self._client.get_record_directory()
+            record_dir = getattr(dir_resp, "record_directory", None)
+        except Exception:
+            record_dir = None
+
         resp = self._client.stop_record()
         path = getattr(resp, "output_path", None)
+
+        if path is None and record_dir:
+            time.sleep(0.5)  # let OBS finish flushing to disk
+            from pathlib import Path as _Path
+            candidates = sorted(
+                (f for ext in ("*.mp4", "*.mkv", "*.mov", "*.flv")
+                 for f in _Path(record_dir).glob(ext)),
+                key=lambda f: f.stat().st_mtime,
+                reverse=True,
+            )
+            if candidates:
+                path = str(candidates[0])
+                logger.info("Resolved output path by directory scan: %s", path)
+
         logger.info("OBS recording stopped. Output: %s", path)
         return path
 

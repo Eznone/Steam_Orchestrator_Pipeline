@@ -1,45 +1,55 @@
 import logging
-import re
 import threading
-import time
 from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 
 from deadlock_clipper.config import load_config
-from deadlock_clipper.recording.client_launcher import teardown_game
-from deadlock_clipper.recording.pipeline import launch_and_prepare, prepare_only, switch_and_prepare
 from deadlock_clipper.recording.obs_controller import OBSConnectionError, OBSController
+from deadlock_clipper.services.clip_session import GameSessionService, RecordOptions
 from deadlock_clipper.web import state
 
 bp = Blueprint("recording", __name__)
 
-_CONFIG = load_config()
 logger = logging.getLogger(__name__)
 
 
-def _safe_filename(name: str) -> str:
-    return re.sub(r'[<>:"/\\|?*]', '', name).strip() or "clip"
-
-
-def _ticks_to_time_str(ticks: int, tick_rate: int) -> str:
-    total_sec = int(ticks) // int(tick_rate)
-    return f"{total_sec // 60}m{total_sec % 60:02d}s"
-
-
 def _recording_defaults() -> dict:
-    rec = _CONFIG.get("recording", {})
-    watcher = _CONFIG.get("watcher", {})
+    cfg = load_config()
+    rec = cfg.get("recording", {})
+    watcher = cfg.get("watcher", {})
     return {
-        "host":                rec.get("obs_host", "localhost"),
-        "port":                int(rec.get("obs_port", 4455)),
-        "password":            rec.get("obs_password", ""),
+        "host":                      rec.get("obs_host", "localhost"),
+        "port":                      int(rec.get("obs_port", 4455)),
+        "password":                  rec.get("obs_password", ""),
         "steam_exe":                 rec.get("steam_exe", ""),
         "launch_wait_seconds":       float(rec.get("launch_wait_seconds", 30)),
         "enter_screen_settle_seconds": float(rec.get("enter_screen_settle_seconds", 5)),
         "seek_settle_seconds":       float(rec.get("seek_settle_seconds", 2)),
         "replays_dir":               watcher.get("hotfolder", ""),
     }
+
+
+def _opts_from_body(body: dict) -> RecordOptions:
+    defaults = _recording_defaults()
+    return RecordOptions.from_config(
+        load_config(),
+        overrides={
+            "steam_exe":         body.get("steam_exe", defaults["steam_exe"]),
+            "launch_wait":       body.get("launch_wait", defaults["launch_wait_seconds"]),
+            "enter_screen_settle": body.get("enter_screen_settle", defaults["enter_screen_settle_seconds"]),
+            "seek_settle":       body.get("seek_settle", defaults["seek_settle_seconds"]),
+            "replays_dir":       body.get("replays_dir", defaults["replays_dir"]) or None,
+        },
+    )
+
+
+def _require_session() -> "GameSessionService | None":
+    """Return the clip session, or None if OBS is not connected."""
+    session = state.clip_session
+    if session is None or session._capture is None:
+        return None
+    return session
 
 
 # ── OBS connection management ────────────────────────────────────────────────
@@ -56,6 +66,8 @@ def obs_status():
             return jsonify({"connected": True, "recording": recording, "config_defaults": defaults})
         except Exception:
             state.obs_controller = None
+            if state.clip_session:
+                state.clip_session._capture = None
             return jsonify({"connected": False, "recording": False, "config_defaults": defaults})
 
 
@@ -74,6 +86,12 @@ def obs_connect():
             ctl = OBSController(host=host, port=port, password=password)
             ctl.connect()
             state.obs_controller = ctl
+            if state.clip_session is None:
+                state.clip_session = GameSessionService(
+                    capture=ctl, recording_lock=state.recording_lock,
+                )
+            else:
+                state.clip_session._capture = ctl
             return jsonify({"status": "ok", "message": f"Connected to OBS at {host}:{port}"})
         except ImportError as exc:
             return jsonify({"status": "error", "message": str(exc)}), 503
@@ -89,7 +107,9 @@ def obs_disconnect():
         if state.obs_controller is not None:
             state.obs_controller.disconnect()
             state.obs_controller = None
-    state.active_dem = None
+        if state.clip_session:
+            state.clip_session._capture = None
+            state.clip_session.active_dem = None
     return jsonify({"status": "ok"})
 
 
@@ -128,49 +148,28 @@ def record_prepare():
     dem_path = body.get("dem_path", "").strip()
     start_tick = int(body.get("start_tick", 0))
     end_tick = int(body.get("end_tick", 0))
-    defaults = _recording_defaults()
-    launch_wait = float(body.get("launch_wait", defaults["launch_wait_seconds"]))
-    enter_screen_settle = float(body.get("enter_screen_settle", defaults["enter_screen_settle_seconds"]))
-    seek_settle = float(body.get("seek_settle", defaults["seek_settle_seconds"]))
-    steam_exe = body.get("steam_exe", defaults["steam_exe"])
-    replays_dir = body.get("replays_dir", defaults["replays_dir"])
+    player_name = body.get("player_name", "")
 
     if not dem_path:
         return jsonify({"status": "error", "message": "dem_path is required"}), 400
 
     tick_rate = (state.parse_cache.get(dem_path) or {}).get("tick_rate", 64)
-    duration_s = max((end_tick - start_tick) / tick_rate, 0) if end_tick > start_tick else 0
-
+    opts = _opts_from_body(body)
     job_id, job = state.jobs.create()
 
-    player_name = body.get("player_name", "")
-
     def _run():
-        with state.recording_lock:
-            try:
-                if state.active_dem == dem_path:
-                    prepare_only(
-                        dem_path, start_tick, seek_settle,
-                        on_status=lambda s, m: state.jobs.update(job, s, m),
-                        player_name=player_name,
-                    )
-                else:
-                    state.active_dem = None
-                    launch_and_prepare(
-                        dem_path, start_tick, steam_exe, launch_wait, seek_settle,
-                        on_status=lambda s, m: state.jobs.update(job, s, m),
-                        enter_screen_settle=enter_screen_settle,
-                        replays_dir=replays_dir or None,
-                        player_name=player_name,
-                    )
-                    state.active_dem = dem_path
-                if duration_s > 0:
-                    state.jobs.update(job, "preparing", "Playing clip...")
-                    time.sleep(duration_s)
-                state.jobs.update(job, "done", "Ready at tick")
-            except Exception as exc:
-                state.active_dem = None
-                state.jobs.update(job, "error", str(exc))
+        session = state.clip_session
+        if session is None:
+            state.jobs.update(job, "error", "Clip session not initialized")
+            return
+        try:
+            session.prepare(
+                dem_path, start_tick, end_tick, tick_rate, opts,
+                on_status=lambda s, m: state.jobs.update(job, s, m),
+                player_name=player_name,
+            )
+        except Exception as exc:
+            state.jobs.update(job, "error", str(exc))
 
     threading.Thread(target=_run, daemon=True).start()
     return jsonify({"status": "started", "job_id": job_id})
@@ -181,93 +180,28 @@ def record_clip():
     body = request.get_json(silent=True) or {}
     dem_path = body.get("dem_path", "").strip()
     clip = body.get("clip", {})
-    defaults = _recording_defaults()
-    launch_wait = float(body.get("launch_wait", defaults["launch_wait_seconds"]))
-    enter_screen_settle = float(body.get("enter_screen_settle", defaults["enter_screen_settle_seconds"]))
-    seek_settle = float(body.get("seek_settle", defaults["seek_settle_seconds"]))
-    steam_exe = body.get("steam_exe", defaults["steam_exe"])
-    replays_dir = body.get("replays_dir", defaults["replays_dir"])
 
     if not dem_path or not clip:
         return jsonify({"status": "error", "message": "dem_path and clip are required"}), 400
 
     clip_id = clip.get("clip_id", "")
-    start_tick = int(clip.get("start_tick", 0))
-    end_tick = int(clip.get("end_tick", 0))
-    player_name = clip.get("player_name", "")
     tick_rate = (state.parse_cache.get(dem_path) or {}).get("tick_rate", 64)
-    duration_s = max((end_tick - start_tick) / tick_rate, 1)
-
+    opts = _opts_from_body(body)
     job_id, job = state.jobs.create(clip_id)
 
     def _run():
-        with state.recording_lock:
-            game_prepared = False
-            try:
-                with state.obs_lock:
-                    if state.obs_controller is None:
-                        raise RuntimeError("OBS not connected — click 'Connect OBS' before recording")
-                if state.active_dem == dem_path:
-                    prepare_only(
-                        dem_path, start_tick, seek_settle,
-                        on_status=lambda s, m: state.jobs.update(job, s, m),
-                        player_name=player_name,
-                    )
-                elif state.game_running:
-                    # Game is up but a different demo is loaded — switch via console.
-                    switch_and_prepare(
-                        dem_path, start_tick, seek_settle,
-                        on_status=lambda s, m: state.jobs.update(job, s, m),
-                        player_name=player_name,
-                    )
-                    state.active_dem = dem_path
-                else:
-                    state.active_dem = None
-                    launch_and_prepare(
-                        dem_path, start_tick, steam_exe, launch_wait, seek_settle,
-                        on_status=lambda s, m: state.jobs.update(job, s, m),
-                        enter_screen_settle=enter_screen_settle,
-                        replays_dir=replays_dir or None,
-                        player_name=player_name,
-                    )
-                    state.active_dem = dem_path
-                    state.game_running = True
-                game_prepared = True
-                clips_dir = Path(_CONFIG.get("clips", {}).get("output_dir", "./data/clips"))
-                match_code = Path(dem_path).stem
-                target_dir = (clips_dir / "deadlock" / match_code).resolve()
-                target_dir.mkdir(parents=True, exist_ok=True)
-                with state.obs_lock:
-                    if state.obs_controller is None:
-                        raise RuntimeError("OBS disconnected during game preparation")
-                    state.jobs.update(job, "recording", "Recording...")
-                    try:
-                        state.obs_controller.set_record_directory(str(target_dir))
-                    except Exception as exc:
-                        logger.warning(
-                            "Could not set OBS record directory to '%s': %s "
-                            "— recording will go to OBS default output folder.",
-                            target_dir, exc,
-                        )
-                    state.obs_controller.start_recording()
-                time.sleep(duration_s)
-                with state.obs_lock:
-                    if state.obs_controller is None:
-                        raise RuntimeError("OBS disconnected during recording")
-                    output_path = state.obs_controller.stop_recording()
-                if output_path:
-                    p = Path(output_path)
-                    safe_player = _safe_filename(player_name)
-                    time_str = _ticks_to_time_str(start_tick, tick_rate)
-                    new_path = target_dir / f"{safe_player}_{time_str}.mp4"
-                    p.rename(new_path)
-                    output_path = str(new_path)
-                state.jobs.update(job, "done", "Saved", output_path)
-            except Exception as exc:
-                if not game_prepared:
-                    state.active_dem = None
-                    state.game_running = False
-                state.jobs.update(job, "error", str(exc))
+        session = state.clip_session
+        if session is None or session._capture is None:
+            state.jobs.update(job, "error", "OBS not connected — click 'Connect OBS' before recording")
+            return
+        try:
+            output_path = session.record_clip(
+                clip, dem_path, tick_rate, opts,
+                on_status=lambda s, m: state.jobs.update(job, s, m),
+            )
+            state.jobs.update(job, "done", "Saved", output_path)
+        except Exception as exc:
+            state.jobs.update(job, "error", str(exc))
 
     threading.Thread(target=_run, daemon=True).start()
     return jsonify({"status": "started", "job_id": job_id, "clip_id": clip_id})
@@ -278,14 +212,14 @@ def record_teardown():
     job_id, job = state.jobs.create()
 
     def _run():
-        with state.recording_lock:
-            try:
-                teardown_game()
-                state.active_dem = None
-                state.game_running = False
-                state.jobs.update(job, "done", "Game exited")
-            except Exception as exc:
-                state.jobs.update(job, "error", str(exc))
+        session = state.clip_session
+        if session is None:
+            state.jobs.update(job, "error", "Clip session not initialized")
+            return
+        try:
+            session.teardown(on_status=lambda s, m: state.jobs.update(job, s, m))
+        except Exception as exc:
+            state.jobs.update(job, "error", str(exc))
 
     threading.Thread(target=_run, daemon=True).start()
     return jsonify({"status": "started", "job_id": job_id})

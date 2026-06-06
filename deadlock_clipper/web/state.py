@@ -1,5 +1,12 @@
+from __future__ import annotations
+
 import threading
 import uuid
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from deadlock_clipper.services.clip_session import GameSessionService
+    from deadlock_clipper.ports.capture import CapturePort
 
 
 class ParseCache:
@@ -53,18 +60,13 @@ parse_cache = ParseCache()
 jobs = JobStore()
 
 # OBS controller — None when not connected (lock shared with background threads)
-obs_controller: "OBSController | None" = None
+obs_controller: "CapturePort | None" = None
 obs_lock = threading.Lock()
-
-# Path of the .dem currently loaded in the running game client.
-# None means the game is not running or the demo is unknown.
-# Set after a successful launch_and_prepare; cleared on error or disconnect.
-active_dem: str | None = None
-
-# True when the Deadlock game client process is running (regardless of which
-# demo is loaded). Used to decide between switch_and_prepare vs launch_and_prepare.
-game_running: bool = False
 
 # Ensures only one recording job (prepare or clip) runs at a time so that
 # game commands from a second job cannot fire while the first is recording.
 recording_lock = threading.Lock()
+
+# Clip session service — owns game state machine and recording orchestration.
+# Initialized by create_app(); replaced when OBS is reconnected.
+clip_session: "GameSessionService | None" = None
