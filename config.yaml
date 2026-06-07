@@ -53,6 +53,14 @@ recording:
   output_width: 0
   output_height: 0
 
+  # ── Audio capture ─────────────────────────────────────────────────────
+  # Set to true to include system audio in clips via WASAPI loopback.
+  # audio_device: leave blank to use the system default playback device
+  # (speakers/headset). To target a specific device, paste its name from:
+  #   python -c "import soundcard; print([m.name for m in soundcard.all_microphones(include_loopback=True)])"
+  audio_capture: true
+  audio_device: ""
+
 clips:
   output_dir: "C:/Users/Eznone/Videos"
 

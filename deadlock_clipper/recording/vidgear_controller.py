@@ -1,9 +1,13 @@
+import ctypes
 import datetime
 import logging
+import subprocess
 import sys
 import threading
 import time
 from pathlib import Path
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +18,57 @@ try:
     _CAPTURE_DEPS_AVAILABLE = True
 except ImportError:
     _CAPTURE_DEPS_AVAILABLE = False
+
+try:
+    import soundcard as sc
+    _AUDIO_DEPS_AVAILABLE = True
+except ImportError:
+    _AUDIO_DEPS_AVAILABLE = False
+
+try:
+    from comtypes import CLSCTX_INPROC_SERVER, GUID, IUnknown, COMMETHOD, HRESULT
+
+    class _IMMDevice(IUnknown):
+        _iid_ = GUID('{D666063F-1587-4E43-81F1-B948E807363F}')
+        _methods_ = [
+            COMMETHOD([], HRESULT, 'Activate',
+                      (['in'], ctypes.c_void_p, 'iid'),
+                      (['in'], ctypes.c_ulong, 'dwClsCtx'),
+                      (['in'], ctypes.c_void_p, 'pActivationParams'),
+                      (['out'], ctypes.POINTER(ctypes.c_void_p), 'ppInterface')),
+            COMMETHOD([], HRESULT, 'OpenPropertyStore',
+                      (['in'], ctypes.c_ulong, 'stgmAccess'),
+                      (['out'], ctypes.POINTER(ctypes.c_void_p), 'ppProperties')),
+            COMMETHOD([], HRESULT, 'GetId',
+                      (['out'], ctypes.POINTER(ctypes.c_wchar_p), 'ppstrId')),
+            COMMETHOD([], HRESULT, 'GetState',
+                      (['out'], ctypes.POINTER(ctypes.c_ulong), 'pdwState')),
+        ]
+
+    class _IMMDeviceEnumerator(IUnknown):
+        _iid_ = GUID('{A95664D2-9614-4F35-A746-DE8DB63617E6}')
+        _methods_ = [
+            COMMETHOD([], HRESULT, 'EnumAudioEndpoints',
+                      (['in'], ctypes.c_uint, 'dataFlow'),
+                      (['in'], ctypes.c_uint, 'dwStateMask'),
+                      (['out'], ctypes.POINTER(ctypes.c_void_p), 'ppDevices')),
+            COMMETHOD([], HRESULT, 'GetDefaultAudioEndpoint',
+                      (['in'], ctypes.c_uint, 'dataFlow'),
+                      (['in'], ctypes.c_uint, 'role'),
+                      (['out'], ctypes.POINTER(ctypes.POINTER(_IMMDevice)), 'ppEndpoint')),
+            COMMETHOD([], HRESULT, 'GetDevice',
+                      (['in'], ctypes.c_wchar_p, 'pwstrId'),
+                      (['out'], ctypes.POINTER(ctypes.c_void_p), 'ppDevice')),
+            COMMETHOD([], HRESULT, 'RegisterEndpointNotificationCallback',
+                      (['in'], ctypes.c_void_p, 'pNotify')),
+            COMMETHOD([], HRESULT, 'UnregisterEndpointNotificationCallback',
+                      (['in'], ctypes.c_void_p, 'pNotify')),
+        ]
+
+    _CLSID_MMDeviceEnumerator = GUID('{BCDE0395-E52F-467C-8E3D-C4579291692E}')
+    _WASAPI_AVAILABLE = True
+except Exception:
+    _WASAPI_AVAILABLE = False
 
 from deadlock_clipper.recording.gpu_encoder import detect_gpu_encoder
 
@@ -44,6 +99,141 @@ _QUALITY_PARAM_BY_CODEC: dict[str, str] = {
     "h264_qsv":       "-global_quality",
     "h264_amf":       "-qvbr_quality_level",
 }
+
+_AUDIO_SAMPLERATE = 48000
+_AUDIO_CHANNELS = 2
+_AUDIO_BLOCKSIZE = 1024
+
+# eRender=0 data-flow direction; eConsole=0, eMultimedia=1 roles.
+# soundcard.default_speaker() internally uses eCommunications (role 2), which
+# is the communications default and is often different from the multimedia/game
+# default.  Games use eMultimedia (1); system sounds use eConsole (0).  We try
+# both roles and prefer eMultimedia so the captured device matches what the game
+# is actually outputting to.
+_WASAPI_ROLES = (1, 0)  # eMultimedia first, eConsole as fallback
+
+
+def _get_default_render_id(role: int) -> str | None:
+    """Return the Windows endpoint ID for the default render device at *role*.
+
+    Uses IMMDeviceEnumerator::GetDefaultAudioEndpoint via comtypes so we can
+    query the eMultimedia role (what games use) rather than soundcard's
+    eCommunications default.  Returns None if comtypes/MMDevAPI is unavailable.
+    """
+    if not _WASAPI_AVAILABLE:
+        return None
+    try:
+        import comtypes
+        enumerator = comtypes.CoCreateInstance(
+            _CLSID_MMDeviceEnumerator, _IMMDeviceEnumerator, CLSCTX_INPROC_SERVER,
+        )
+        device = enumerator.GetDefaultAudioEndpoint(0, role)
+        return device.GetId()
+    except Exception:
+        logger.debug("GetDefaultAudioEndpoint(role=%d) failed", role, exc_info=True)
+        return None
+
+
+def _select_loopback_device(preferred_name: str):
+    """Return the loopback microphone to record from.
+
+    Priority:
+    1. *preferred_name* if explicitly set in config — used as-is.
+    2. Windows default multimedia render endpoint (eMultimedia, then eConsole)
+       matched to a soundcard loopback device by endpoint ID.
+    3. soundcard.default_speaker() loopback as last resort.
+    """
+    if preferred_name:
+        return sc.get_microphone(preferred_name, include_loopback=True)
+
+    loopback_by_id = {m.id: m for m in sc.all_microphones(include_loopback=True)}
+
+    for role in _WASAPI_ROLES:
+        device_id = _get_default_render_id(role)
+        if device_id and device_id in loopback_by_id:
+            device = loopback_by_id[device_id]
+            logger.info(
+                "Audio: using default render device (role=%d) '%s'", role, device.name,
+            )
+            return device
+
+    # Final fallback — soundcard's own default (usually eCommunications).
+    fallback = sc.get_microphone(sc.default_speaker().id, include_loopback=True)
+    logger.warning(
+        "Audio: could not resolve render endpoint via Windows API — "
+        "falling back to soundcard default '%s'. "
+        "Set audio_device in config.yaml if this is wrong.",
+        fallback.name,
+    )
+    return fallback
+
+
+def _audio_capture_fn(
+    device_name: str,
+    frames: list,
+    stop: threading.Event,
+) -> None:
+    # dxcam imports comtypes which calls CoInitializeEx(STA) in the main thread
+    # before soundcard can establish MTA.  This leaves the audio thread with no
+    # COM apartment, so all WASAPI calls return CO_E_NOTINITIALIZED.  Initialize
+    # COM as MTA explicitly on this thread so soundcard can proceed.
+    _coinit_hr = ctypes.windll.ole32.CoInitializeEx(None, 0)  # 0 = COINIT_MULTITHREADED
+    _coinit_owner = (_coinit_hr == 0)  # S_OK: we init'd; S_FALSE: already init'd
+    try:
+        loopback = _select_loopback_device(device_name)
+        logger.info("Audio capture: recording loopback from '%s'", loopback.name)
+        with loopback.recorder(
+            samplerate=_AUDIO_SAMPLERATE,
+            channels=_AUDIO_CHANNELS,
+            blocksize=_AUDIO_BLOCKSIZE,
+        ) as recorder:
+            while not stop.is_set():
+                frames.append(recorder.record(numframes=_AUDIO_BLOCKSIZE))
+    except Exception:
+        logger.warning("Audio capture thread failed.", exc_info=True)
+    finally:
+        if _coinit_owner:
+            ctypes.windll.ole32.CoUninitialize()
+
+
+def _write_audio_pcm(frames: list, path: str) -> None:
+    np.concatenate(frames, axis=0).astype("float32").tofile(path)
+
+
+def _mux_video_audio(
+    ffmpeg_bin: str,
+    video_path: str,
+    audio_pcm_path: str,
+    out_path: str,
+) -> None:
+    cmd = [
+        ffmpeg_bin, "-y",
+        "-f", "f32le", "-ar", str(_AUDIO_SAMPLERATE), "-ac", str(_AUDIO_CHANNELS),
+        "-i", audio_pcm_path,
+        "-i", video_path,
+        "-map", "1:v:0", "-map", "0:a:0",
+        "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+        "-shortest",
+        out_path,
+    ]
+    creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+    result = subprocess.run(cmd, capture_output=True, timeout=60, creationflags=creationflags)
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.decode(errors="replace"))
+
+
+def _try_unlink(path: str) -> None:
+    try:
+        Path(path).unlink(missing_ok=True)
+    except Exception:
+        logger.debug("Could not delete temp file: %s", path)
+
+
+def _try_rename(src: str, dst: str) -> None:
+    try:
+        Path(src).replace(dst)
+    except Exception:
+        logger.warning("Could not rename %s → %s", src, dst)
 
 
 def probe_gpu_encoder() -> str | None:
@@ -92,6 +282,8 @@ class VidGearController:
         output_width: int | None = None,
         output_height: int | None = None,
         window_title: str = "Deadlock",
+        audio_capture: bool = False,
+        audio_device: str = "",
     ):
         if not _CAPTURE_DEPS_AVAILABLE:
             raise ImportError("vidgear/dxcam are not installed. Run: uv add vidgear dxcam opencv-python")
@@ -104,6 +296,8 @@ class VidGearController:
         self._output_width = output_width
         self._output_height = output_height
         self._window_title = window_title
+        self._audio_capture = audio_capture
+        self._audio_device = audio_device
 
         self._record_dir = ""
         self._connected = False
@@ -128,6 +322,8 @@ class VidGearController:
             bitrate=rec.get("bitrate") or None,
             output_width=int(rec.get("output_width", 0)) or None,
             output_height=int(rec.get("output_height", 0)) or None,
+            audio_capture=bool(rec.get("audio_capture", False)),
+            audio_device=rec.get("audio_device", ""),
         )
 
     # ── Connection lifecycle ─────────────────────────────────────────────────
@@ -385,6 +581,14 @@ class VidGearController:
         unique_frames = 0
         first_frame_ts: float | None = None
         loop_start = time.perf_counter()
+        # Audio capture state
+        audio_thread: threading.Thread | None = None
+        audio_frames: list = []
+        audio_stop = threading.Event()
+        # When audio is enabled, WriteGear writes to a temp file; the final mux
+        # produces out_path. When disabled, WriteGear writes directly to out_path.
+        video_write_path = out_path.replace(".mp4", "_video.mp4") if self._audio_capture else out_path
+        audio_pcm_path = out_path.replace(".mp4", "_audio.pcm")
         try:
             # BGRA is the *native* DXGI surface format — requesting it lets dxcam skip its
             # internal cv2.cvtColor step entirely (cv2_processor only converts when asked
@@ -397,7 +601,7 @@ class VidGearController:
             # argument) — passing a dict directly would be absorbed as a single literal
             # "output_params" key, producing a malformed FFmpeg command line that exits
             # immediately and breaks the stdin pipe on the first frame write.
-            writer = WriteGear(output=out_path, compression_mode=True, **self._build_output_params())
+            writer = WriteGear(output=video_write_path, compression_mode=True, **self._build_output_params())
 
             prev_ts: float | None = None
             while not self._stop_event.is_set():
@@ -421,6 +625,21 @@ class VidGearController:
                 if total_frames == 1:
                     first_frame_ts = time.perf_counter()
                     self._first_frame_event.set()
+                    if self._audio_capture:
+                        if not _AUDIO_DEPS_AVAILABLE:
+                            logger.warning(
+                                "soundcard is not installed — audio capture skipped. "
+                                "Run: uv add soundcard"
+                            )
+                        else:
+                            audio_stop.clear()
+                            audio_thread = threading.Thread(
+                                target=_audio_capture_fn,
+                                args=(self._audio_device, audio_frames, audio_stop),
+                                name="audio-capture",
+                                daemon=True,
+                            )
+                            audio_thread.start()
 
         except Exception as caught:
             self._first_frame_event.set()  # unblock start_recording() on early failure
@@ -437,6 +656,11 @@ class VidGearController:
                     first_frame_ts - loop_start,
                     total_frames, unique_frames, dup_pct, effective_fps, self._fps, capture_elapsed,
                 )
+            # Stop audio before flushing the video encoder — both streams need to
+            # finish before the mux step can run.
+            audio_stop.set()
+            if audio_thread is not None:
+                audio_thread.join(timeout=5.0)
             if camera is not None:
                 try:
                     camera.stop()
@@ -454,6 +678,23 @@ class VidGearController:
                     writer.close()
                 except Exception:
                     logger.warning("Error closing WriteGear.", exc_info=True)
+            # Mux audio into the video file when audio was successfully captured.
+            if self._audio_capture and audio_frames and exc is None:
+                try:
+                    ffmpeg_bin = get_valid_ffmpeg_path("", sys.platform == "win32")
+                    _write_audio_pcm(audio_frames, audio_pcm_path)
+                    _mux_video_audio(ffmpeg_bin, video_write_path, audio_pcm_path, out_path)
+                    _try_unlink(video_write_path)
+                    _try_unlink(audio_pcm_path)
+                    logger.info("Audio mux complete → %s", out_path)
+                except Exception as mux_exc:
+                    logger.warning("Audio mux failed (%s) — keeping video-only file.", mux_exc)
+                    _try_unlink(audio_pcm_path)
+                    if video_write_path != out_path:
+                        _try_rename(video_write_path, out_path)
+            elif video_write_path != out_path:
+                # audio_capture was True but nothing to mux (no frames or encode error)
+                _try_rename(video_write_path, out_path)
 
             with self._state_lock:
                 self._recording = False
