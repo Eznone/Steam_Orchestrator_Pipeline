@@ -5,7 +5,7 @@ from pathlib import Path
 from flask import Blueprint, jsonify, request
 
 from deadlock_clipper.config import load_config
-from deadlock_clipper.recording.obs_controller import OBSConnectionError, OBSController
+from deadlock_clipper.recording.vidgear_controller import CaptureError, VidGearController, probe_gpu_encoder
 from deadlock_clipper.services.clip_session import GameSessionService, RecordOptions
 from deadlock_clipper.web import state
 
@@ -19,14 +19,18 @@ def _recording_defaults() -> dict:
     rec = cfg.get("recording", {})
     watcher = cfg.get("watcher", {})
     return {
-        "host":                      rec.get("obs_host", "localhost"),
-        "port":                      int(rec.get("obs_port", 4455)),
-        "password":                  rec.get("obs_password", ""),
         "steam_exe":                 rec.get("steam_exe", ""),
         "launch_wait_seconds":       float(rec.get("launch_wait_seconds", 30)),
         "enter_screen_settle_seconds": float(rec.get("enter_screen_settle_seconds", 5)),
         "seek_settle_seconds":       float(rec.get("seek_settle_seconds", 2)),
         "replays_dir":               watcher.get("hotfolder", ""),
+        "fps":                       int(rec.get("fps", 60)),
+        "encoder":                   rec.get("encoder", "cpu"),
+        "crf":                       int(rec.get("crf", 18)),
+        "preset":                    rec.get("preset", "fast"),
+        "bitrate":                   rec.get("bitrate", ""),
+        "output_width":              int(rec.get("output_width", 0)),
+        "output_height":             int(rec.get("output_height", 0)),
     }
 
 
@@ -45,68 +49,68 @@ def _opts_from_body(body: dict) -> RecordOptions:
 
 
 def _require_session() -> "GameSessionService | None":
-    """Return the clip session, or None if OBS is not connected."""
+    """Return the clip session, or None if the capture backend is not connected."""
     session = state.clip_session
     if session is None or session._capture is None:
         return None
     return session
 
 
-# ── OBS connection management ────────────────────────────────────────────────
+# ── Capture backend connection management ───────────────────────────────────
 
 
-@bp.route("/api/obs/status")
-def obs_status():
+@bp.route("/api/capture/status")
+def capture_status():
     defaults = _recording_defaults()
-    with state.obs_lock:
-        if state.obs_controller is None:
-            return jsonify({"connected": False, "recording": False, "config_defaults": defaults})
+    gpu_encoder = probe_gpu_encoder()
+    with state.capture_lock:
+        if state.capture_controller is None:
+            return jsonify({"connected": False, "recording": False, "config_defaults": defaults, "gpu_encoder": gpu_encoder})
         try:
-            recording = state.obs_controller.is_recording()
-            return jsonify({"connected": True, "recording": recording, "config_defaults": defaults})
+            recording = state.capture_controller.is_recording()
+            return jsonify({"connected": True, "recording": recording, "config_defaults": defaults, "gpu_encoder": gpu_encoder})
         except Exception:
-            state.obs_controller = None
+            state.capture_controller = None
             if state.clip_session:
                 state.clip_session._capture = None
-            return jsonify({"connected": False, "recording": False, "config_defaults": defaults})
+            return jsonify({"connected": False, "recording": False, "config_defaults": defaults, "gpu_encoder": gpu_encoder})
 
 
-@bp.route("/api/obs/connect", methods=["POST"])
-def obs_connect():
+@bp.route("/api/capture/connect", methods=["POST"])
+def capture_connect():
     body = request.get_json(silent=True) or {}
-    host = body.get("host", "localhost")
-    port = int(body.get("port", 4455))
-    password = body.get("password", "")
-
-    with state.obs_lock:
-        if state.obs_controller is not None:
-            state.obs_controller.disconnect()
-            state.obs_controller = None
+    encoder = body.get("encoder", "cpu")
+    with state.capture_lock:
+        if state.capture_controller is not None:
+            state.capture_controller.disconnect()
+            state.capture_controller = None
         try:
-            ctl = OBSController(host=host, port=port, password=password)
+            cfg = load_config()
+            cfg = {**cfg, "recording": {**cfg.get("recording", {}), "encoder": encoder}}
+            ctl = VidGearController.from_config(cfg)
             ctl.connect()
-            state.obs_controller = ctl
+            state.capture_controller = ctl
             if state.clip_session is None:
                 state.clip_session = GameSessionService(
                     capture=ctl, recording_lock=state.recording_lock,
                 )
             else:
                 state.clip_session._capture = ctl
-            return jsonify({"status": "ok", "message": f"Connected to OBS at {host}:{port}"})
+            return jsonify({"status": "ok", "message": "Capture backend connected."})
         except ImportError as exc:
             return jsonify({"status": "error", "message": str(exc)}), 503
-        except OBSConnectionError as exc:
+        except CaptureError as exc:
             return jsonify({"status": "error", "message": str(exc)}), 503
         except Exception as exc:
             return jsonify({"status": "error", "message": str(exc)}), 500
 
 
-@bp.route("/api/obs/disconnect", methods=["POST"])
-def obs_disconnect():
-    with state.obs_lock:
-        if state.obs_controller is not None:
-            state.obs_controller.disconnect()
-            state.obs_controller = None
+@bp.route("/api/capture/disconnect", methods=["POST"])
+def capture_disconnect():
+    with state.capture_lock:
+        if state.capture_controller is not None:
+            state.capture_controller.disconnect()
+            state.capture_controller = None
         if state.clip_session:
             state.clip_session._capture = None
             state.clip_session.active_dem = None
@@ -115,13 +119,13 @@ def obs_disconnect():
 
 @bp.route("/api/record/start", methods=["POST"])
 def record_start():
-    with state.obs_lock:
-        if state.obs_controller is None:
-            return jsonify({"status": "error", "message": "Not connected to OBS"}), 400
+    with state.capture_lock:
+        if state.capture_controller is None:
+            return jsonify({"status": "error", "message": "Capture backend not connected"}), 400
         try:
-            if state.obs_controller.is_recording():
+            if state.capture_controller.is_recording():
                 return jsonify({"status": "error", "message": "Already recording"}), 400
-            state.obs_controller.start_recording()
+            state.capture_controller.start_recording()
             return jsonify({"status": "ok"})
         except Exception as exc:
             return jsonify({"status": "error", "message": str(exc)}), 500
@@ -129,11 +133,11 @@ def record_start():
 
 @bp.route("/api/record/stop", methods=["POST"])
 def record_stop():
-    with state.obs_lock:
-        if state.obs_controller is None:
-            return jsonify({"status": "error", "message": "Not connected to OBS"}), 400
+    with state.capture_lock:
+        if state.capture_controller is None:
+            return jsonify({"status": "error", "message": "Capture backend not connected"}), 400
         try:
-            output_path = state.obs_controller.stop_recording()
+            output_path = state.capture_controller.stop_recording()
             return jsonify({"status": "ok", "output_path": output_path})
         except Exception as exc:
             return jsonify({"status": "error", "message": str(exc)}), 500
@@ -192,7 +196,7 @@ def record_clip():
     def _run():
         session = state.clip_session
         if session is None or session._capture is None:
-            state.jobs.update(job, "error", "OBS not connected — click 'Connect OBS' before recording")
+            state.jobs.update(job, "error", "Capture backend not connected — click 'Connect' before recording")
             return
         try:
             output_path = session.record_clip(

@@ -73,7 +73,7 @@ class GameSessionService:
             game_prepared = False
             try:
                 if self._capture is None:
-                    raise RuntimeError("OBS not connected — click 'Connect OBS' before recording")
+                    raise RuntimeError("Capture backend not connected — click 'Connect' before recording")
                 self._prepare_game(dem_path, start_tick, opts, on_status, player_name=player_name)
                 game_prepared = True
 

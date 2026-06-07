@@ -122,31 +122,17 @@
     <!-- Recording page controls -->
     <div id="page-recording-sidebar" class="sidebar-page" style="display:none">
 
-      <!-- OBS Connection -->
+      <!-- Capture Backend -->
       <div>
-        <div class="section-label">OBS Connection</div>
-        <div class="field">
-          <label for="obs-host">Host</label>
-          <input type="text" id="obs-host" value="localhost" />
-        </div>
-        <div class="field row-2">
-          <div>
-            <label for="obs-port">Port</label>
-            <input type="number" id="obs-port" value="4455" />
-          </div>
-          <div>
-            <label for="obs-password">Password</label>
-            <input type="text" id="obs-password" placeholder="(none)" />
-          </div>
-        </div>
+        <div class="section-label">Capture Backend</div>
         <div class="field" style="display:flex; align-items:center; gap:8px">
-          <span id="obs-status-badge" class="status-badge badge-disconnected">
+          <span id="capture-status-badge" class="status-badge badge-disconnected">
             <span class="status-dot"></span> Disconnected
           </span>
         </div>
         <div class="row-2 field">
-          <button class="btn btn-secondary" id="obs-connect-btn">Connect</button>
-          <button class="btn btn-secondary" id="obs-disconnect-btn" disabled>Disconnect</button>
+          <button class="btn btn-secondary" id="capture-connect-btn">Connect</button>
+          <button class="btn btn-secondary" id="capture-disconnect-btn" disabled>Disconnect</button>
         </div>
       </div>
 
@@ -169,13 +155,17 @@
         </div>
       </div>
 
-      <!-- Manual controls -->
+      <!-- Encoder -->
       <div>
-        <div class="section-label">Manual Controls</div>
-        <div class="row-2 field">
-          <button class="btn btn-green" id="rec-start-btn" disabled>Start Rec</button>
-          <button class="btn btn-red" id="rec-stop-btn" disabled>Stop Rec</button>
+        <div class="section-label">Encoder</div>
+        <div class="field">
+          <label for="encoder-select">Video Encoder</label>
+          <select id="encoder-select">
+            <option value="cpu">CPU (libx264)</option>
+            <option value="gpu">GPU (hardware-accelerated)</option>
+          </select>
         </div>
+        <div id="encoder-warning" class="field" style="display:none; color:var(--red); font-size:13px"></div>
       </div>
 
       <div id="rec-log">Ready.</div>
@@ -238,9 +228,9 @@
     <!-- Recording page -->
     <div id="main-recording" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
 
-      <div id="obs-status-bar">
-        <span>OBS:</span>
-        <span id="obs-status-text">Not connected</span>
+      <div id="capture-status-bar">
+        <span>Capture:</span>
+        <span id="capture-status-text">Not connected</span>
       </div>
 
       <div style="flex:1; overflow-y:auto;">

@@ -59,9 +59,9 @@ class JobStore:
 parse_cache = ParseCache()
 jobs = JobStore()
 
-# OBS controller — None when not connected (lock shared with background threads)
-obs_controller: "CapturePort | None" = None
-obs_lock = threading.Lock()
+# Capture controller — None when not connected (lock shared with background threads)
+capture_controller: "CapturePort | None" = None
+capture_lock = threading.Lock()
 
 # Ensures only one recording job (prepare or clip) runs at a time so that
 # game commands from a second job cannot fire while the first is recording.

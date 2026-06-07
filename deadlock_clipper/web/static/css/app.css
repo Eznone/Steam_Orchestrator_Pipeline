@@ -314,7 +314,7 @@ main {
 .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
 .sidebar-page { display: flex; flex-direction: column; gap: 24px; }
 
-/* ── OBS/recording status badges ── */
+/* ── Recording status badges ── */
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -329,12 +329,12 @@ main {
 .badge-disconnected .status-dot { background: var(--muted); }
 .badge-connected    { background: #122212; color: var(--green); }
 .badge-connected    .status-dot { background: var(--green); }
-.badge-recording-obs { background: #2a0a0a; color: var(--red); }
-.badge-recording-obs .status-dot { background: var(--red); animation: pulse 1s ease infinite; }
+.badge-recording { background: #2a0a0a; color: var(--red); }
+.badge-recording .status-dot { background: var(--red); animation: pulse 1s ease infinite; }
 @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
 
-/* ── OBS status strip ── */
-#obs-status-bar {
+/* ── Capture status strip ── */
+#capture-status-bar {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   padding: 10px 24px;

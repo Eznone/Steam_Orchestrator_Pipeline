@@ -11,7 +11,7 @@ def create_app() -> Flask:
     app.register_blueprint(analysis_bp)
     app.register_blueprint(recording_bp)
     state.clip_session = GameSessionService(
-        capture=state.obs_controller,  # type: ignore[arg-type]
+        capture=state.capture_controller,  # type: ignore[arg-type]
         recording_lock=state.recording_lock,
     )
     return app

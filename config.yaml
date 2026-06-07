@@ -28,17 +28,30 @@ analyzer:
     - patron
 
 recording:
-  obs_host: "localhost"
-  obs_port: 4455
-  obs_password: ""  # set via OBS_PASSWORD in .env
-  # OBS scene to switch to before recording (leave blank to use current scene)
-  scene_name: ""
   # Path to steam.exe (used to launch Deadlock with +playdemo)
   steam_exe: 'C:\Program Files (x86)\Steam\steam.exe'
   # Seconds to wait after launching before sending console commands
   launch_wait_seconds: 30
-  # Seconds to wait after demo_goto before OBS starts recording
+  # Seconds to wait after demo_goto before capture starts
   seek_settle_seconds: 2
+
+  # ── Capture settings (VidGear: ScreenGear + WriteGear) ────────────────
+  # Target capture frame rate
+  fps: 60
+  # Video encoder: "gpu" (recommended — uses NVENC/QSV/AMF; auto-detects a
+  # working hardware encoder; connect() raises an error if none is found) or
+  # "cpu" (libx264 software fallback for machines without a GPU).
+  encoder: "gpu"
+  # Quality (lower = better; ignored when bitrate is set).
+  # Applies to all encoders: libx264 (-crf), h264_nvenc (-cq), h264_qsv (-global_quality), h264_amf (-qvbr_quality_level).
+  crf: 16
+  # Encoder speed/quality tradeoff (ultrafast..veryslow)
+  preset: "fast"
+  # Optional constant bitrate, e.g. "8000k" — overrides crf when set
+  bitrate: ""
+  # Optional output scaling; leave at 0 to capture at the game window's native size
+  output_width: 0
+  output_height: 0
 
 clips:
   output_dir: "C:/Users/Eznone/Videos"

@@ -13,7 +13,6 @@ def load_config(config_path: str = "config.yaml", *, force_reload: bool = False)
 
     Environment variables take precedence over config.yaml:
         DEADLOCK_STEAM_ID  → analyzer.target_player_steam_id
-        OBS_PASSWORD       → recording.obs_password
     """
     global _cache
     if _cache is not None and not force_reload:
@@ -26,10 +25,6 @@ def load_config(config_path: str = "config.yaml", *, force_reload: bool = False)
     steam_id = os.getenv("DEADLOCK_STEAM_ID")
     if steam_id:
         cfg.setdefault("analyzer", {})["target_player_steam_id"] = steam_id
-
-    obs_password = os.getenv("OBS_PASSWORD")
-    if obs_password is not None:
-        cfg.setdefault("recording", {})["obs_password"] = obs_password
 
     _cache = cfg
     return _cache

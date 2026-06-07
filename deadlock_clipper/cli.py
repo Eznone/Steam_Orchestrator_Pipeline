@@ -42,23 +42,25 @@ def cmd_analyze(args: argparse.Namespace) -> None:
         )
 
 
-def cmd_obs_test(args: argparse.Namespace) -> None:
-    from deadlock_clipper.recording.obs_controller import OBSConnectionError, OBSController
+def cmd_capture_test(args: argparse.Namespace) -> None:
+    import tempfile
+
+    from deadlock_clipper.recording.vidgear_controller import CaptureError, VidGearController
 
     config = load_config()
-    print("Testing OBS connection...")
+    print("Testing capture backend (Deadlock must be running)...")
     try:
-        with OBSController.from_config(config) as ctl:
-            recording = ctl.is_recording()
-            print(f"Connected. Currently recording: {recording}")
+        with VidGearController.from_config(config) as ctl:
+            print("Connected. Deadlock window found.")
             if args.record:
+                ctl.set_record_directory(tempfile.mkdtemp())
                 print("Starting 3-second test recording...")
                 ctl.start_recording()
                 time.sleep(3)
                 path = ctl.stop_recording()
                 print(f"Saved to: {path}")
-    except OBSConnectionError as exc:
-        print(f"Connection failed: {exc}", file=sys.stderr)
+    except CaptureError as exc:
+        print(f"Capture error: {exc}", file=sys.stderr)
         sys.exit(1)
 
 
@@ -96,7 +98,7 @@ def main() -> None:
     a = sub.add_parser("analyze", help="Detect clip zones from a parsed JSON file")
     a.add_argument("parsed", help="Path to a parsed match JSON file")
 
-    o = sub.add_parser("obs-test", help="Test the OBS WebSocket connection")
+    o = sub.add_parser("capture-test", help="Test the VidGear screen capture backend")
     o.add_argument("--record", action="store_true", help="Do a 3-second test recording")
 
     l = sub.add_parser("launch-test", help="Launch a demo and verify HUD hide works")
@@ -106,7 +108,7 @@ def main() -> None:
     {
         "parse":        cmd_parse,
         "analyze":      cmd_analyze,
-        "obs-test":     cmd_obs_test,
+        "capture-test": cmd_capture_test,
         "launch-test":  cmd_launch_test,
     }[args.command](args)
 

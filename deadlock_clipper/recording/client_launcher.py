@@ -42,7 +42,7 @@ def _require_gui() -> None:
         )
 
 
-def _find_window_hwnd(title_substring: str) -> int | None:
+def find_window_hwnd(title_substring: str) -> int | None:
     """Return the HWND of the first top-level window whose title contains title_substring."""
     if sys.platform != "win32":
         return None
@@ -63,6 +63,35 @@ def _find_window_hwnd(title_substring: str) -> int | None:
     return found[0] if found else None
 
 
+class _RECT(ctypes.Structure):
+    _fields_ = [
+        ("left", ctypes.c_long),
+        ("top", ctypes.c_long),
+        ("right", ctypes.c_long),
+        ("bottom", ctypes.c_long),
+    ]
+
+
+def get_window_rect(hwnd: int) -> tuple[int, int, int, int] | None:
+    """Return (left, top, width, height) of the window in screen coordinates.
+
+    Returns None if the rectangle can't be read (e.g. window minimised/closed)
+    or has degenerate (non-positive) dimensions.
+    """
+    if sys.platform != "win32":
+        return None
+
+    rect = _RECT()
+    if not ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+        return None
+
+    width = rect.right - rect.left
+    height = rect.bottom - rect.top
+    if width <= 0 or height <= 0:
+        return None
+    return (rect.left, rect.top, width, height)
+
+
 def focus_game_window(title_substring: str = GAME_WINDOW_TITLE, settle: float = 0.3) -> None:
     """Bring the game window to the foreground before sending any input.
 
@@ -72,7 +101,7 @@ def focus_game_window(title_substring: str = GAME_WINDOW_TITLE, settle: float = 
     if sys.platform != "win32":
         return
 
-    hwnd = _find_window_hwnd(title_substring)
+    hwnd = find_window_hwnd(title_substring)
     if hwnd is None:
         logger.warning("focus_game_window: no window found containing '%s'", title_substring)
         return

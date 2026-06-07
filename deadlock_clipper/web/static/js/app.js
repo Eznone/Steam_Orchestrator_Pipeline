@@ -344,7 +344,8 @@ captureBtn.addEventListener('click', () => {
 // ── Recording page state ───────────────────────────────────────────────────
 let currentPage = 'analysis';
 const clipStates = {};  // clip_id -> {status, message}
-let obsConnected = false;
+let captureConnected = false;
+let gpuEncoder = null;  // name of the working hardware encoder, or null if none was detected
 
 // ── Page navigation ────────────────────────────────────────────────────────
 function switchPage(page) {
@@ -358,7 +359,7 @@ function switchPage(page) {
   document.getElementById('page-recording-sidebar').style.display  = page === 'recording' ? '' : 'none';
   if (page === 'recording') {
     renderRecordingQueue();
-    pollObsStatus();
+    pollCaptureStatus();
   }
 }
 
@@ -366,35 +367,49 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => switchPage(btn.dataset.page));
 });
 
-// ── OBS status polling ─────────────────────────────────────────────────────
-async function pollObsStatus() {
+// ── Capture backend status polling ────────────────────────────────────────
+async function pollCaptureStatus() {
   try {
-    const res  = await fetch('/api/obs/status');
+    const res  = await fetch('/api/capture/status');
     const data = await res.json();
-    updateObsBadge(data.connected, data.recording);
-    if (data.config_defaults && !document.getElementById('obs-host').dataset.loaded) {
+    gpuEncoder = data.gpu_encoder ?? null;
+    updateCaptureBadge(data.connected, data.recording);
+    if (data.config_defaults && !document.getElementById('steam-exe').dataset.loaded) {
       const d = data.config_defaults;
-      document.getElementById('obs-host').value  = d.host  || 'localhost';
-      document.getElementById('obs-port').value  = d.port  || 4455;
-      if (d.password)            document.getElementById('obs-password').value  = d.password;
       if (d.steam_exe)           document.getElementById('steam-exe').value     = d.steam_exe;
       if (d.launch_wait_seconds) document.getElementById('launch-wait').value   = d.launch_wait_seconds;
       if (d.seek_settle_seconds) document.getElementById('seek-settle').value   = d.seek_settle_seconds;
-      document.getElementById('obs-host').dataset.loaded = '1';
+      if (d.encoder)             document.getElementById('encoder-select').value = d.encoder;
+      document.getElementById('steam-exe').dataset.loaded = '1';
     }
+    updateEncoderWarning();
   } catch { /* ignore */ }
 }
 
-function updateObsBadge(connected, recording) {
-  obsConnected = connected;
-  const badge      = document.getElementById('obs-status-badge');
-  const statusText = document.getElementById('obs-status-text');
+function updateEncoderWarning() {
+  const warning = document.getElementById('encoder-warning');
+  const wantsGpu = document.getElementById('encoder-select').value === 'gpu';
+  if (wantsGpu && !gpuEncoder) {
+    warning.textContent = 'No working GPU encoder was detected on this system — switch to CPU to enable recording.';
+    warning.style.display = '';
+  } else {
+    warning.style.display = 'none';
+  }
+  updateRecordButtonsState();
+}
+
+document.getElementById('encoder-select').addEventListener('change', updateEncoderWarning);
+
+function updateCaptureBadge(connected, recording) {
+  captureConnected = connected;
+  const badge      = document.getElementById('capture-status-badge');
+  const statusText = document.getElementById('capture-status-text');
   if (!connected) {
     badge.className = 'status-badge badge-disconnected';
     badge.innerHTML = '<span class="status-dot"></span> Disconnected';
     statusText.textContent = 'Not connected';
   } else if (recording) {
-    badge.className = 'status-badge badge-recording-obs';
+    badge.className = 'status-badge badge-recording';
     badge.innerHTML = '<span class="status-dot"></span> Recording';
     statusText.textContent = 'Connected · Recording';
   } else {
@@ -402,74 +417,49 @@ function updateObsBadge(connected, recording) {
     badge.innerHTML = '<span class="status-dot"></span> Connected';
     statusText.textContent = 'Connected · Idle';
   }
-  document.getElementById('obs-disconnect-btn').disabled = !connected;
-  document.getElementById('obs-connect-btn').disabled    = connected;
-  document.getElementById('rec-start-btn').disabled      = !connected || recording;
-  document.getElementById('rec-stop-btn').disabled       = !connected || !recording;
+  document.getElementById('capture-disconnect-btn').disabled = !connected;
+  document.getElementById('capture-connect-btn').disabled    = connected;
   updateRecordButtonsState();
 }
 
 function updateRecordButtonsState() {
-  document.getElementById('record-selected-btn').disabled = !obsConnected;
+  const gpuUnavailable = document.getElementById('encoder-select').value === 'gpu' && !gpuEncoder;
+  document.getElementById('record-selected-btn').disabled = !captureConnected || gpuUnavailable;
   document.querySelectorAll('.rec-record-btn').forEach(btn => {
     const clipId = btn.closest('.rec-clip-card')?.dataset.clipId;
     const cs = clipStates[clipId] || { status: 'queued' };
     const isBusy = cs.status !== 'queued' && cs.status !== 'done' && cs.status !== 'error';
-    btn.disabled = isBusy || !obsConnected;
+    btn.disabled = isBusy || !captureConnected || gpuUnavailable;
   });
 }
 
-document.getElementById('obs-connect-btn').addEventListener('click', async () => {
+document.getElementById('capture-connect-btn').addEventListener('click', async () => {
   setRecLog('<span class="spinner"></span>Connecting…');
-  document.getElementById('obs-connect-btn').disabled = true;
+  document.getElementById('capture-connect-btn').disabled = true;
   try {
-    const res  = await fetch('/api/obs/connect', {
+    const res  = await fetch('/api/capture/connect', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        host:     document.getElementById('obs-host').value,
-        port:     Number(document.getElementById('obs-port').value),
-        password: document.getElementById('obs-password').value,
-      }),
+      body: JSON.stringify({ encoder: document.getElementById('encoder-select').value }),
     });
     const data = await res.json();
     if (data.status === 'ok') {
       setRecLog(data.message, 'ok');
-      pollObsStatus();
+      pollCaptureStatus();
     } else {
       setRecLog(`Error: ${data.message}`, 'error');
-      document.getElementById('obs-connect-btn').disabled = false;
+      document.getElementById('capture-connect-btn').disabled = false;
     }
   } catch (err) {
     setRecLog(`Unexpected error: ${err.message}`, 'error');
-    document.getElementById('obs-connect-btn').disabled = false;
+    document.getElementById('capture-connect-btn').disabled = false;
   }
 });
 
-document.getElementById('obs-disconnect-btn').addEventListener('click', async () => {
-  await fetch('/api/obs/disconnect', { method: 'POST' });
-  updateObsBadge(false, false);
+document.getElementById('capture-disconnect-btn').addEventListener('click', async () => {
+  await fetch('/api/capture/disconnect', { method: 'POST' });
+  updateCaptureBadge(false, false);
   setRecLog('Disconnected.');
-});
-
-document.getElementById('rec-start-btn').addEventListener('click', async () => {
-  const res  = await fetch('/api/record/start', { method: 'POST' });
-  const data = await res.json();
-  if (data.status === 'ok') {
-    setRecLog('Recording started.', 'ok');
-    updateObsBadge(true, true);
-    pollObsStatus();
-  } else { setRecLog(`Error: ${data.message}`, 'error'); }
-});
-
-document.getElementById('rec-stop-btn').addEventListener('click', async () => {
-  const res  = await fetch('/api/record/stop', { method: 'POST' });
-  const data = await res.json();
-  if (data.status === 'ok') {
-    setRecLog(data.output_path ? `Saved: ${data.output_path}` : 'Recording stopped.', 'ok');
-    updateObsBadge(true, false);
-    pollObsStatus();
-  } else { setRecLog(`Error: ${data.message}`, 'error'); }
 });
 
 // ── Rec log ────────────────────────────────────────────────────────────────
@@ -533,7 +523,7 @@ function renderRecordingQueue() {
         </div>
         <span class="clip-status clip-status-${cs.status}" title="${cs.message || ''}">${cs.status}</span>
         <button class="btn btn-secondary btn-sm" onclick="prepareClip('${clip._qid}')" ${isBusy ? 'disabled' : ''}>Prepare</button>
-        <button class="btn btn-primary btn-sm rec-record-btn" onclick="recordClip('${clip._qid}')" ${isBusy || !obsConnected ? 'disabled' : ''}>Record</button>
+        <button class="btn btn-primary btn-sm rec-record-btn" onclick="recordClip('${clip._qid}')" ${isBusy || !captureConnected ? 'disabled' : ''}>Record</button>
       `;
       list.appendChild(card);
     });
@@ -563,7 +553,7 @@ function setClipState(clipId, status, message = '') {
   }
   const isBusy = status !== 'queued' && status !== 'done' && status !== 'error';
   card.querySelectorAll('button, .rec-checkbox').forEach(el => {
-    el.disabled = el.classList.contains('rec-record-btn') ? isBusy || !obsConnected : isBusy;
+    el.disabled = el.classList.contains('rec-record-btn') ? isBusy || !captureConnected : isBusy;
   });
 }
 
@@ -647,11 +637,11 @@ function pollJob(jobId, clipId) {
       if (job.status === 'done') {
         clearInterval(timer);
         setRecLog(job.output_path ? `Clip ${clipId} saved: ${job.output_path}` : `Clip ${clipId} done.`, 'ok');
-        pollObsStatus();
+        pollCaptureStatus();
       } else if (job.status === 'error') {
         clearInterval(timer);
         setRecLog(`Clip ${clipId} failed: ${job.message}`, 'error');
-        pollObsStatus();
+        pollCaptureStatus();
       }
     } catch { /* network glitch, keep polling */ }
   }, 5000);
@@ -750,12 +740,12 @@ function waitForJobAllQids(jobId, allQids) {
         if (job.status === 'done') {
           clearInterval(timer);
           setRecLog(job.output_path ? `Saved: ${job.output_path}` : 'Clip done.', 'ok');
-          pollObsStatus();
+          pollCaptureStatus();
           resolve(job);
         } else if (job.status === 'error') {
           clearInterval(timer);
           setRecLog(`Clip failed: ${job.message}`, 'error');
-          pollObsStatus();
+          pollCaptureStatus();
           resolve(job);
         }
       } catch { /* keep waiting */ }
@@ -789,7 +779,7 @@ document.getElementById('prepare-selected-btn').addEventListener('click', async 
     if (jobId) await waitForJob(jobId);
   }
   document.getElementById('prepare-selected-btn').disabled = false;
-  document.getElementById('record-selected-btn').disabled  = !obsConnected;
+  document.getElementById('record-selected-btn').disabled  = !captureConnected;
   setRecLog('Batch prepare complete.', 'ok');
 });
 
@@ -818,7 +808,7 @@ document.getElementById('record-selected-btn').addEventListener('click', async (
     }
   } catch { /* non-fatal */ }
   document.getElementById('prepare-selected-btn').disabled = false;
-  document.getElementById('record-selected-btn').disabled  = !obsConnected;
+  document.getElementById('record-selected-btn').disabled  = !captureConnected;
   setRecLog('Batch recording complete.', 'ok');
 });
 
