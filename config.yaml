@@ -11,6 +11,9 @@ parser:
 analyzer:
   # Your Steam ID64 — leave blank to analyze all players
   target_player_steam_id: ""  # set via DEADLOCK_STEAM_ID in .env
+  # POV to record for single-kill clips: "attacker" (the killer) or "victim" (the one killed).
+  # Ignored for multikill/kill_streak (ambiguous — multiple distinct victims).
+  pov: "attacker"
   # Seconds within which multiple kills count as a multi-kill
   multikill_window_seconds: 10
   # Ticks to record before the event trigger (lead-in context)

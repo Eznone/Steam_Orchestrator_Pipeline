@@ -71,6 +71,7 @@ def analyze_route():
         "analyzer": {
             "event_type": body.get("event_type", "multikill"),
             "target_player_steam_id": body.get("steam_id", ""),
+            "pov": body.get("pov", "attacker"),
             "multikill_window_seconds": float(body.get("window_seconds", 10)),
             "multikill_threshold": int(body.get("threshold", 2)),
             "kill_streak_threshold": int(body.get("streak_threshold", 3)),

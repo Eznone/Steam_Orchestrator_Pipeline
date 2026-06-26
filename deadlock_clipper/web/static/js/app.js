@@ -131,7 +131,7 @@ loadBtn.addEventListener('click', async () => {
 
 // ── Event type param visibility ─────────────────────────────────────────────
 const eventTypeSelect = document.getElementById('event-type');
-const allParamDivs = ['multikill', 'kill_streak', 'objective'];
+const allParamDivs = ['multikill', 'kill_streak', 'objective', 'single_kill'];
 
 function updateParamVisibility() {
   const val = eventTypeSelect.value;
@@ -156,6 +156,7 @@ analyzeBtn.addEventListener('click', async () => {
     dem_path:     currentDem,
     steam_id:     document.getElementById('player-select').value,
     event_type:   eventType,
+    pov:          document.getElementById('pov-select').value,
     lead_ticks:   Math.round(Number(document.getElementById('lead').value) * tickRate),
     buffer_ticks: Math.round(Number(document.getElementById('buffer').value) * tickRate),
   };
@@ -233,7 +234,8 @@ function renderClips() {
       midLine    = `<span class="dur">${durationS}s</span>`;
       bottomLine = `<span class="kills">${clip.detail}</span>`;
     } else if (clip.event_type === 'single_kill') {
-      midLine    = `<span class="dur">${durationS}s · 1 kill</span>`;
+      const povTag = clip.pov === 'victim' ? ' · Victim POV' : '';
+      midLine    = `<span class="dur">${durationS}s · 1 kill${povTag}</span>`;
       bottomLine = `<span class="kills">${clip.detail}</span>`;
     } else {
       const killTimes = clip.kill_ticks.map(t => ticksToTime(t, tickRate)).join(', ');
