@@ -247,6 +247,15 @@ def hide_hud() -> None:
     logger.info("HUD hidden.")
 
 
+def set_hud_visible(visible: bool) -> None:
+    """Show or hide the player HUD (health, abilities, etc.) via console.
+
+    Distinct from hide_hud(), which only hides the replay timeline/scrubber.
+    """
+    send_console_command(f"citadel_hud_visible {'true' if visible else 'false'}")
+    logger.info("HUD visibility set to %s.", visible)
+
+
 def goto_tick(
     tick: int,
     seek_settle_seconds: float = 2.0,
@@ -298,12 +307,28 @@ def teardown_game(disconnect_settle: float = 3.0, pre_settle: float = 3.0) -> No
     logger.info("Sent 'quit' — game client exiting.")
 
 
-def prepare_replay(start_tick: int, seek_settle_seconds: float = 2.0, player_name: str = "") -> None:
-    """Spectate the player (if given), hide the HUD, and seek to the clip's start tick.
+def prepare_replay(
+    start_tick: int,
+    seek_settle_seconds: float = 2.0,
+    player_name: str = "",
+    hud_visible: bool = True,
+    spec_switch_settle_seconds: float = 0.5,
+) -> None:
+    """Spectate the player (if given), set HUD visibility, hide the replay HUD, and seek.
 
     Call this after load_demo_via_console() and before starting OBS recording.
+
+    spec_switch_settle_seconds gives the engine time to fully apply the
+    spectator camera switch before HUD-affecting convars are sent — sending
+    them immediately risks the engine ignoring or resetting them mid-switch.
+    This matters most when re-spectating a different player within the same
+    running game session (e.g. switching POV between clips), since
+    citadel_hud_visible must be re-applied after every spec_player call, not
+    just once at launch.
     """
     if player_name:
         spec_player(player_name)
+        time.sleep(spec_switch_settle_seconds)
+    set_hud_visible(hud_visible)
     hide_hud()
     goto_tick(start_tick, seek_settle_seconds)

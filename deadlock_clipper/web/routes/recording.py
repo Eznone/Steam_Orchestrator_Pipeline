@@ -23,6 +23,7 @@ def _recording_defaults() -> dict:
         "launch_wait_seconds":       float(rec.get("launch_wait_seconds", 30)),
         "enter_screen_settle_seconds": float(rec.get("enter_screen_settle_seconds", 5)),
         "seek_settle_seconds":       float(rec.get("seek_settle_seconds", 2)),
+        "hud_visible":               bool(rec.get("hud_visible", True)),
         "replays_dir":               watcher.get("hotfolder", ""),
         "fps":                       int(rec.get("fps", 60)),
         "encoder":                   rec.get("encoder", "cpu"),
@@ -43,6 +44,7 @@ def _opts_from_body(body: dict) -> RecordOptions:
             "launch_wait":       body.get("launch_wait", defaults["launch_wait_seconds"]),
             "enter_screen_settle": body.get("enter_screen_settle", defaults["enter_screen_settle_seconds"]),
             "seek_settle":       body.get("seek_settle", defaults["seek_settle_seconds"]),
+            "hud_visible":       body.get("hud_visible", defaults["hud_visible"]),
             "replays_dir":       body.get("replays_dir", defaults["replays_dir"]) or None,
         },
     )

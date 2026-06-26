@@ -17,6 +17,7 @@ def prepare_only(
     seek_settle: float,
     on_status: Callable[[str, str], None],
     player_name: str = "",
+    hud_visible: bool = True,
 ) -> None:
     """Seek an already-running game to start_tick without relaunching.
 
@@ -24,7 +25,7 @@ def prepare_only(
     with the correct demo loaded.
     """
     on_status("preparing", "Seeking to tick...")
-    prepare_replay(start_tick, seek_settle, player_name=player_name)
+    prepare_replay(start_tick, seek_settle, player_name=player_name, hud_visible=hud_visible)
 
 
 def switch_and_prepare(
@@ -35,6 +36,7 @@ def switch_and_prepare(
     demo_load_wait: float = 8.0,
     disconnect_settle: float = 10.0,
     player_name: str = "",
+    hud_visible: bool = True,
 ) -> None:
     """Disconnect from the current demo, load the next one via console, and seek.
 
@@ -46,7 +48,7 @@ def switch_and_prepare(
     on_status("preparing", "Loading next demo via console...")
     load_demo_via_console(Path(dem_path).name, demo_load_wait)
     on_status("preparing", "Seeking to tick...")
-    prepare_replay(start_tick, seek_settle, player_name=player_name)
+    prepare_replay(start_tick, seek_settle, player_name=player_name, hud_visible=hud_visible)
 
 
 def launch_and_prepare(
@@ -60,6 +62,7 @@ def launch_and_prepare(
     replays_dir: str | None = None,
     demo_load_wait: float = 8.0,
     player_name: str = "",
+    hud_visible: bool = True,
 ) -> None:
     """Launch Deadlock with the given replay and seek to start_tick.
 
@@ -74,4 +77,4 @@ def launch_and_prepare(
     on_status("preparing", "Loading demo via console...")
     load_demo_via_console(Path(dem_path).name, demo_load_wait)
     on_status("preparing", "Seeking to tick...")
-    prepare_replay(start_tick, seek_settle, player_name=player_name)
+    prepare_replay(start_tick, seek_settle, player_name=player_name, hud_visible=hud_visible)

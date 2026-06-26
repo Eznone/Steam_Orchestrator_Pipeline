@@ -37,6 +37,10 @@ recording:
   launch_wait_seconds: 30
   # Seconds to wait after demo_goto before capture starts
   seek_settle_seconds: 2
+  # Show the player HUD (health bars, ability icons) during clips.
+  # Set to false to hide it via citadel_hud_visible. Independent of the replay
+  # timeline (citadel_hide_replay_hud), which is always hidden.
+  hud_visible: true
 
   # ── Capture settings (VidGear: ScreenGear + WriteGear) ────────────────
   # Target capture frame rate

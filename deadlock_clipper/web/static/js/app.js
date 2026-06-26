@@ -382,6 +382,7 @@ async function pollCaptureStatus() {
       if (d.launch_wait_seconds) document.getElementById('launch-wait').value   = d.launch_wait_seconds;
       if (d.seek_settle_seconds) document.getElementById('seek-settle').value   = d.seek_settle_seconds;
       if (d.encoder)             document.getElementById('encoder-select').value = d.encoder;
+      if (d.hud_visible !== undefined) document.getElementById('hud-visible-checkbox').checked = d.hud_visible;
       document.getElementById('steam-exe').dataset.loaded = '1';
     }
     updateEncoderWarning();
@@ -578,6 +579,7 @@ async function prepareClip(qid) {
         steam_exe:   document.getElementById('steam-exe').value,
         launch_wait: Number(document.getElementById('launch-wait').value),
         seek_settle: Number(document.getElementById('seek-settle').value),
+        hud_visible: document.getElementById('hud-visible-checkbox').checked,
       }),
     });
     const data = await res.json();
@@ -611,6 +613,7 @@ async function recordClip(qid) {
         steam_exe:   document.getElementById('steam-exe').value,
         launch_wait: Number(document.getElementById('launch-wait').value),
         seek_settle: Number(document.getElementById('seek-settle').value),
+        hud_visible: document.getElementById('hud-visible-checkbox').checked,
       }),
     });
     const data = await res.json();
@@ -716,6 +719,7 @@ async function recordMergedClip(mergedClip, demPath) {
         steam_exe:   document.getElementById('steam-exe').value,
         launch_wait: Number(document.getElementById('launch-wait').value),
         seek_settle: Number(document.getElementById('seek-settle').value),
+        hud_visible: document.getElementById('hud-visible-checkbox').checked,
       }),
     });
     const data = await res.json();
@@ -816,3 +820,4 @@ document.getElementById('record-selected-btn').addEventListener('click', async (
 
 // ── Init ───────────────────────────────────────────────────────────────────
 loadFileList();
+pollCaptureStatus();

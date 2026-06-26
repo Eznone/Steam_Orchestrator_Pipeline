@@ -23,6 +23,7 @@ class RecordOptions:
     seek_settle: float
     replays_dir: str | None
     clips_dir: Path
+    hud_visible: bool
 
     @classmethod
     def from_config(cls, config: dict, overrides: dict | None = None) -> "RecordOptions":
@@ -36,6 +37,7 @@ class RecordOptions:
             seek_settle=float(ov.get("seek_settle", rec.get("seek_settle_seconds", 2))),
             replays_dir=ov.get("replays_dir") or watcher.get("hotfolder") or None,
             clips_dir=Path(config.get("clips", {}).get("output_dir", "./data/clips")),
+            hud_visible=bool(ov.get("hud_visible", rec.get("hud_visible", True))),
         )
 
 
@@ -156,12 +158,12 @@ class GameSessionService:
         if strategy == "seek_only":
             prepare_only(
                 dem_path, start_tick, opts.seek_settle,
-                on_status=on_status, player_name=player_name,
+                on_status=on_status, player_name=player_name, hud_visible=opts.hud_visible,
             )
         elif strategy == "switch":
             switch_and_prepare(
                 dem_path, start_tick, opts.seek_settle,
-                on_status=on_status, player_name=player_name,
+                on_status=on_status, player_name=player_name, hud_visible=opts.hud_visible,
             )
             self.active_dem = dem_path
         else:
@@ -172,6 +174,7 @@ class GameSessionService:
                 enter_screen_settle=opts.enter_screen_settle,
                 replays_dir=opts.replays_dir,
                 player_name=player_name,
+                hud_visible=opts.hud_visible,
             )
             self.active_dem = dem_path
             self.game_running = True
